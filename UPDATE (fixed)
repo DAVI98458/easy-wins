@@ -260,7 +260,7 @@ button.MouseButton1Click:Connect(function()
         end)
 
         -- espera 1 segundo antes do próximo teleporte (conforme pedido)
-        task.wait(0.5)
+        task.wait(0.2)
     end
 
     -- aguarda curto para garantir loops terminam (se necessário)
