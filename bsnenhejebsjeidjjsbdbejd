@@ -1,0 +1,124 @@
+--// LocalScript em StarterGui
+--// Botão arrastável + teleporte sequencial + múltiplos ClickDetectors
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+
+-- GUI principal
+local gui = Instance.new("ScreenGui")
+gui.Name = "GetAmoGUI"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Botão
+local button = Instance.new("TextButton")
+button.Name = "GetAmoButton"
+button.Text = "get ammo"
+button.Size = UDim2.new(0, 120, 0, 40)
+button.Position = UDim2.new(1, -130, 0, 10) -- canto superior direito
+button.AnchorPoint = Vector2.new(0, 0)
+button.BackgroundColor3 = Color3.fromRGB(60, 180, 75)
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 20
+button.AutoButtonColor = true
+button.Parent = gui
+
+---------------------------------------------------------------------
+-- SISTEMA DE ARRASTAR (FUNCIONAL E SUAVE)
+---------------------------------------------------------------------
+local dragging = false
+local dragStart, startPos
+
+local function update(input)
+	local delta = input.Position - dragStart
+	button.Position = UDim2.new(
+		startPos.X.Scale,
+		startPos.X.Offset + delta.X,
+		startPos.Y.Scale,
+		startPos.Y.Offset + delta.Y
+	)
+end
+
+button.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = button.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+		update(input)
+	end
+end)
+
+---------------------------------------------------------------------
+-- FUNÇÃO: Ativar múltiplos ClickDetectors por 5 segundos
+---------------------------------------------------------------------
+local function activateMultipleClickLoops(duration)
+	local ammoPiles = workspace:WaitForChild("AmmoPiles")
+	local indices = {4, 3, 2}
+
+	local detectors = {}
+	for _, i in ipairs(indices) do
+		local pile = ammoPiles:GetChildren()[i]
+		if pile and pile:FindFirstChild("Detector") then
+			local click = pile.Detector:FindFirstChildOfClass("ClickDetector")
+			if click then
+				table.insert(detectors, click)
+			end
+		end
+	end
+
+	local startTime = tick()
+	while tick() - startTime < duration do
+		for _, clickDetector in ipairs(detectors) do
+			pcall(function()
+				fireclickdetector(clickDetector)
+			end)
+		end
+		task.wait(0.1)
+	end
+end
+
+---------------------------------------------------------------------
+-- FUNÇÃO PRINCIPAL
+---------------------------------------------------------------------
+button.MouseButton1Click:Connect(function()
+	if button:GetAttribute("Busy") then return end
+	button:SetAttribute("Busy", true)
+
+	local character = player.Character or player.CharacterAdded:Wait()
+	local root = character:WaitForChild("HumanoidRootPart")
+	local originalCFrame = root.CFrame
+
+	-- Posições dos teleportes
+	local teleportPositions = {
+		Vector3.new(-45, 4, -66),
+		Vector3.new(52, 4, 283),
+		Vector3.new(95, 4, 179)
+	}
+
+	-- Teleporta sequencialmente
+	for _, pos in ipairs(teleportPositions) do
+		root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
+		task.spawn(function()
+			activateMultipleClickLoops(5)
+		end)
+		task.wait(1)
+	end
+
+	-- Retorna à posição original
+	root.CFrame = originalCFrame
+
+	button:SetAttribute("Busy", false)
+end)
