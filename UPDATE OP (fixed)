@@ -1,36 +1,35 @@
--- Script de botão "get amo" (Executor)
--- Cria botão arrastável e executa ClickDetectors com compatibilidade universal
+-- Script para executor: teleporte + múltiplos fallbacks para acionar ClickDetectors
+-- Cole no executor (client). Verifique o console (F9) para logs detalhados.
 
-local player = game.Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local root = char:WaitForChild("HumanoidRootPart")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
--- GUI
-local gui = Instance.new("ScreenGui", game.CoreGui)
+-- Segurança: espera o personagem
+local function waitChar()
+    local ch = player.Character or player.CharacterAdded:Wait()
+    local root = ch:WaitForChild("HumanoidRootPart", 5)
+    return ch, root
+end
+
+-- Cria GUI no CoreGui (executor)
+local gui = Instance.new("ScreenGui")
 gui.Name = "GetAmoGUI"
+gui.Parent = game.CoreGui
 
-local button = Instance.new("TextButton", gui)
+local button = Instance.new("TextButton")
 button.Size = UDim2.new(0, 120, 0, 40)
 button.Position = UDim2.new(1, -130, 0, 10)
-button.BackgroundColor3 = Color3.fromRGB(60, 180, 75)
-button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.AnchorPoint = Vector2.new(0, 0)
+button.BackgroundColor3 = Color3.fromRGB(60,180,75)
+button.TextColor3 = Color3.new(1,1,1)
 button.Font = Enum.Font.SourceSansBold
 button.TextSize = 20
-button.Text = "get ammo"
-button.Draggable = true
+button.Text = "get amo"
 button.Active = true
+button.Draggable = true
+button.Parent = gui
 
--- Detectar a função correta de fireclickdetector do exploit
-local fireClick =
-    fireclickdetector or
-    clickdetectorfire or
-    fireclickdetector_internal or
-    fireclickdetectorremote or
-    function(cd)
-        warn("Nenhuma função fireclickdetector encontrada no exploit")
-    end
-
--- Teleportes
+-- Posições de teleporte
 local teleportPositions = {
     Vector3.new(-45, 4, -66),
     Vector3.new(52, 4, 283),
@@ -38,49 +37,250 @@ local teleportPositions = {
     Vector3.new(-7, 4, -150)
 }
 
--- ClickDetectors
-local ammo = workspace:WaitForChild("AmmoPiles")
-local clickDetectors = {
-    ammo:GetChildren()[4] and ammo:GetChildren()[4]:FindFirstChild("Detector") and ammo:GetChildren()[4].Detector:FindFirstChildOfClass("ClickDetector"),
-    ammo:GetChildren()[3] and ammo:GetChildren()[3]:FindFirstChild("Detector") and ammo:GetChildren()[3].Detector:FindFirstChildOfClass("ClickDetector"),
-    ammo:FindFirstChild("LeftAmmoPile") and ammo.LeftAmmoPile:FindFirstChild("Detector") and ammo.LeftAmmoPile.Detector:FindFirstChildOfClass("ClickDetector"),
-    ammo:FindFirstChild("RightAmmoPile") and ammo.RightAmmoPile:FindFirstChild("Detector") and ammo.RightAmmoPile.Detector:FindFirstChildOfClass("ClickDetector")
-}
+-- Função utilitária: safe print com prefixo
+local function log(...) print("[GETAMO]", ...) end
+local function warnlog(...) warn("[GETAMO] ", ...) end
 
--- Função para acionar os ClickDetectors por 5 segundos
-local function fireDetectorsFor(duration)
-    local start = tick()
-    while tick() - start < duration do
-        for _, cd in ipairs(clickDetectors) do
-            if cd then
+-- Detectar coleções de funções possíveis do exploit
+local availableFire = nil
+local function detectFireFunctions()
+    -- tenta nomes comuns no _G / globals
+    local candidates = {
+        "fireclickdetector",
+        "clickdetectorfire",
+        "fireClickDetector",
+        "FireClickDetector",
+        "fireclickdetector_internal",
+        "fireclickdetectorremote",
+        "FireClickDetectorInternal"
+    }
+    for _, name in ipairs(candidates) do
+        local f = rawget(_G, name) or (type(_G[name]) == "function" and _G[name]) or _G[name]
+        if type(f) == "function" then
+            log("Encontrada função exploit:", name)
+            return f, name
+        end
+    end
+    -- também tenta referências diretas (alguns exploits exportam globalmente)
+    if type(fireclickdetector) == "function" then return fireclickdetector, "fireclickdetector" end
+    if type(clickdetectorfire) == "function" then return clickdetectorfire, "clickdetectorfire" end
+    -- nada encontrado
+    return nil, nil
+end
+
+availableFire, _ = detectFireFunctions()
+if not availableFire then
+    log("Nenhuma função 'fireclickdetector' detectada automaticamente, será usado fallback com getconnections se disponível.")
+end
+
+-- Função que tenta várias formas de 'clicar' num ClickDetector
+local function tryFireDetector(detector)
+    if not detector or not detector:IsA("ClickDetector") then
+        warnlog("Detector inválido passado a tryFireDetector.")
+        return false, "invalid"
+    end
+
+    -- 1) Tentar função nativa do exploit (se encontrada)
+    if availableFire then
+        local ok, err = pcall(function() availableFire(detector) end)
+        if ok then
+            log("Disparado via função exploit.")
+            return true, "exploit_func"
+        else
+            warnlog("exploit function erro:", err)
+        end
+    end
+
+    -- 2) getconnections fallback: tenta disparar as conexões de MouseClick
+    local success, gc = pcall(function() return getconnections end)
+    if success and typeof(gc) == "function" then
+        -- tenta conexões do evento MouseClick (função comum)
+        local ok, conns = pcall(function() return getconnections(detector.MouseClick) end)
+        if ok and type(conns) == "table" and #conns > 0 then
+            for i, connection in ipairs(conns) do
                 pcall(function()
-                    fireClick(cd)
+                    -- alguns exploits tem :Fire() ou .Function
+                    if connection.Fire then
+                        connection.Fire(connection, player)
+                    elseif connection.Function then
+                        connection.Function(player)
+                    elseif connection.disconnect then
+                        -- nada a fazer, mas continuar
+                    else
+                        -- tenta chamar closure (alguns retornam wrappers)
+                        if type(connection) == "table" and type(connection.Function) == "function" then
+                            connection.Function(player)
+                        end
+                    end
                 end)
             end
+            log("Disparado via getconnections(detector.MouseClick).")
+            return true, "getconnections"
+        else
+            warnlog("getconnections não retornou conexões (ou não existe) para detector.MouseClick.")
+        end
+    else
+        warnlog("getconnections não disponível no exploit.")
+    end
+
+    -- 3) tentar invocar qualquer evento existente chamado 'MouseClick' com :FireServer não aplica, mas tentamos pcall de :Fire (sem garantia)
+    local ok3, err3 = pcall(function()
+        if detector.MouseClick then
+            -- alguns ambientes permitem detector.MouseClick:Fire(player)
+            if type(detector.MouseClick.Fire) == "function" then
+                detector.MouseClick:Fire(player)
+            end
+        end
+    end)
+    if ok3 then
+        log("Tentativa de detector.MouseClick:Fire() executada (sem garantia).")
+        return true, "MouseClickFire"
+    else
+        warnlog("detector.MouseClick:Fire() falhou ou não suportado:", err3)
+    end
+
+    -- 4) Última tentativa: tocar na parte que possui o detector (simular touch) se houver uma parte associada
+    local parentPart = detector.Parent
+    if parentPart and parentPart:IsA("BasePart") then
+        -- simula touch via firetouchinterest (muitos exploits expõem)
+        local ft = rawget(_G, "firetouchinterest") or rawget(_G, "FireTouch")
+        if type(ft) == "function" then
+            pcall(function()
+                ft(player.Character.HumanoidRootPart, parentPart, 0)
+                task.wait(0.05)
+                ft(player.Character.HumanoidRootPart, parentPart, 1)
+            end)
+            log("Tentativa via firetouchinterest executada.")
+            return true, "firetouch"
+        else
+            warnlog("firetouchinterest não disponível no exploit.")
+        end
+    end
+
+    -- nada funcionou
+    warnlog("Falha ao acionar detector; nenhum método funcionou.")
+    return false, "failed"
+end
+
+-- Coleta dos detectors (verifica existencia)
+local function collectDetectors()
+    local a = workspace:FindFirstChild("AmmoPiles")
+    if not a then
+        warnlog("workspace.AmmoPiles não encontrado.")
+        return {}
+    end
+    local detectors = {}
+
+    -- índice 4 e 3
+    local children = a:GetChildren()
+    if children[4] and children[4]:FindFirstChild("Detector") then
+        table.insert(detectors, children[4].Detector:FindFirstChildOfClass("ClickDetector"))
+    else warnlog("AmmoPiles[4].Detector não encontrado") end
+
+    if children[3] and children[3]:FindFirstChild("Detector") then
+        table.insert(detectors, children[3].Detector:FindFirstChildOfClass("ClickDetector"))
+    else warnlog("AmmoPiles[3].Detector não encontrado") end
+
+    -- LeftAmmoPile.Detector
+    if a:FindFirstChild("LeftAmmoPile") and a.LeftAmmoPile:FindFirstChild("Detector") then
+        table.insert(detectors, a.LeftAmmoPile.Detector:FindFirstChildOfClass("ClickDetector"))
+    else warnlog("LeftAmmoPile.Detector não encontrado") end
+
+    -- RightAmmoPile.Detector
+    if a:FindFirstChild("RightAmmoPile") and a.RightAmmoPile:FindFirstChild("Detector") then
+        table.insert(detectors, a.RightAmmoPile.Detector:FindFirstChildOfClass("ClickDetector"))
+    else warnlog("RightAmmoPile.Detector não encontrado") end
+
+    -- filtra nils
+    local valid = {}
+    for i, d in ipairs(detectors) do
+        if d and d:IsA("ClickDetector") then
+            table.insert(valid, d)
+            log("Detector coletado:", d:GetFullName())
+        else
+            warnlog("Detector inválido ou nil na posição", i)
+        end
+    end
+    return valid
+end
+
+-- Função que aciona cada detector repetidamente por 'duration' segundos
+local function fireAllFor(detectors, duration)
+    if #detectors == 0 then
+        warnlog("Nenhum detector válido para disparar.")
+        return
+    end
+    local t0 = tick()
+    while tick() - t0 < duration do
+        for _, d in ipairs(detectors) do
+            local ok, method = pcall(function() return tryFireDetector(d) end)
+            if not ok then warnlog("Erro interno ao tentar disparar detector:", method) end
         end
         task.wait(0.1)
     end
 end
 
--- Função principal
+-- Test helper: imprime estado dos detectors (use antes de rodar)
+local function testPrint()
+    log("=== Testando detectors encontrados ===")
+    local dets = collectDetectors()
+    for i, d in ipairs(dets) do
+        log(i, "->", d and d:GetFullName() or "nil")
+    end
+    log("== Fim do teste ==")
+end
+
+-- Função principal acionada pelo botão
 button.MouseButton1Click:Connect(function()
-    local character = player.Character or player.CharacterAdded:Wait()
-    local root = character:WaitForChild("HumanoidRootPart")
-    local originalCFrame = root.CFrame
+    button.Active = false
+    button.Draggable = false
 
-    for _, pos in ipairs(teleportPositions) do
-        -- Teleporta o jogador
-        root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
+    local ch, root = waitChar()
+    local original = root.CFrame
+    local detectors = collectDetectors()
 
-        -- Executa detectores por 5s
+    if #detectors == 0 then
+        warnlog("Nenhum detector válido encontrado — abortando sequência.")
+        button.Active = true
+        button.Draggable = true
+        return
+    end
+
+    log("Iniciando sequência de teleporte e disparo de detectors.")
+    for idx, pos in ipairs(teleportPositions) do
+        -- teleporta
+        pcall(function()
+            root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
+        end)
+        log(("Teleported to #%d: %s"):format(idx, tostring(pos)))
+
+        -- dispara por 5 segundos em paralelo (mas aguardamos 1s entre teleports)
         task.spawn(function()
-            fireDetectorsFor(5)
+            fireAllFor(detectors, 5)
         end)
 
-        -- Espera 1s antes do próximo teleporte
+        -- espera 1 segundo antes do próximo teleporte (conforme pedido)
         task.wait(0.5)
     end
 
-    -- Volta para o local original
-    root.CFrame = originalCFrame
+    -- aguarda curto para garantir loops terminam (se necessário)
+    task.wait(0.2)
+
+    -- retorna ao lugar original
+    pcall(function() root.CFrame = original end)
+    log("Sequência finalizada. Retornado à posição original.")
+
+    button.Active = true
+    button.Draggable = true
 end)
+
+-- Exponha uma hotkey para rodar o teste rápido (opcional)
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.KeyCode == Enum.KeyCode.T then
+        testPrint()
+    end
+end)
+
+log("Script pronto. Pressione T para listar detectors encontrados no console.")
