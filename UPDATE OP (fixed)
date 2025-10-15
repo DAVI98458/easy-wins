@@ -78,7 +78,7 @@ button.MouseButton1Click:Connect(function()
         end)
 
         -- Espera 1s antes do próximo teleporte
-        task.wait(1)
+        task.wait(0.5)
     end
 
     -- Volta para o local original
