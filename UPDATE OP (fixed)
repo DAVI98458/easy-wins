@@ -1,0 +1,86 @@
+-- Script de botão "get amo" (Executor)
+-- Cria botão arrastável e executa ClickDetectors com compatibilidade universal
+
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local root = char:WaitForChild("HumanoidRootPart")
+
+-- GUI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "GetAmoGUI"
+
+local button = Instance.new("TextButton", gui)
+button.Size = UDim2.new(0, 120, 0, 40)
+button.Position = UDim2.new(1, -130, 0, 10)
+button.BackgroundColor3 = Color3.fromRGB(60, 180, 75)
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 20
+button.Text = "get amo"
+button.Draggable = true
+button.Active = true
+
+-- Detectar a função correta de fireclickdetector do exploit
+local fireClick =
+    fireclickdetector or
+    clickdetectorfire or
+    fireclickdetector_internal or
+    fireclickdetectorremote or
+    function(cd)
+        warn("Nenhuma função fireclickdetector encontrada no exploit")
+    end
+
+-- Teleportes
+local teleportPositions = {
+    Vector3.new(-45, 4, -66),
+    Vector3.new(52, 4, 283),
+    Vector3.new(95, 4, 179),
+    Vector3.new(-7, 4, -150)
+}
+
+-- ClickDetectors
+local ammo = workspace:WaitForChild("AmmoPiles")
+local clickDetectors = {
+    ammo:GetChildren()[4] and ammo:GetChildren()[4]:FindFirstChild("Detector") and ammo:GetChildren()[4].Detector:FindFirstChildOfClass("ClickDetector"),
+    ammo:GetChildren()[3] and ammo:GetChildren()[3]:FindFirstChild("Detector") and ammo:GetChildren()[3].Detector:FindFirstChildOfClass("ClickDetector"),
+    ammo:FindFirstChild("LeftAmmoPile") and ammo.LeftAmmoPile:FindFirstChild("Detector") and ammo.LeftAmmoPile.Detector:FindFirstChildOfClass("ClickDetector"),
+    ammo:FindFirstChild("RightAmmoPile") and ammo.RightAmmoPile:FindFirstChild("Detector") and ammo.RightAmmoPile.Detector:FindFirstChildOfClass("ClickDetector")
+}
+
+-- Função para acionar os ClickDetectors por 5 segundos
+local function fireDetectorsFor(duration)
+    local start = tick()
+    while tick() - start < duration do
+        for _, cd in ipairs(clickDetectors) do
+            if cd then
+                pcall(function()
+                    fireClick(cd)
+                end)
+            end
+        end
+        task.wait(0.1)
+    end
+end
+
+-- Função principal
+button.MouseButton1Click:Connect(function()
+    local character = player.Character or player.CharacterAdded:Wait()
+    local root = character:WaitForChild("HumanoidRootPart")
+    local originalCFrame = root.CFrame
+
+    for _, pos in ipairs(teleportPositions) do
+        -- Teleporta o jogador
+        root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
+
+        -- Executa detectores por 5s
+        task.spawn(function()
+            fireDetectorsFor(5)
+        end)
+
+        -- Espera 1s antes do próximo teleporte
+        task.wait(1)
+    end
+
+    -- Volta para o local original
+    root.CFrame = originalCFrame
+end)
