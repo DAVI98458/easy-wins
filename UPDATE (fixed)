@@ -1,4 +1,4 @@
--- Script para executor: teleporte + múltiplos fallbacks + highlight dinâmico
+-- Script para executor: teleporte + múltiplos fallbacks + highlight vermelho + notificação "Head spawned"
 -- Cole no executor (client). Verifique o console (F9) para logs detalhados.
 
 local Players = game:GetService("Players")
@@ -24,7 +24,7 @@ button.BackgroundColor3 = Color3.fromRGB(60,180,75)
 button.TextColor3 = Color3.new(1,1,1)
 button.Font = Enum.Font.SourceSansBold
 button.TextSize = 20
-button.Text = "get ammo"
+button.Text = "get amo"
 button.Active = true
 button.Draggable = true
 button.Parent = gui
@@ -41,23 +41,59 @@ local teleportPositions = {
 local function log(...) print("[GETAMO]", ...) end
 local function warnlog(...) warn("[GETAMO] ", ...) end
 
--- 🔹 HIGHLIGHT dinâmico em workspace.WorkerHead.Head
+-- 🔹 HIGHLIGHT dinâmico em workspace.WorkerHead.Head (Vermelho) + notificação "Head spawned"
 task.spawn(function()
     local highlight = Instance.new("Highlight")
     highlight.Name = "WorkerHighlight"
-    highlight.FillColor = Color3.fromRGB(255, 255, 0)
-    highlight.OutlineColor = Color3.fromRGB(255, 200, 0)
-    highlight.FillTransparency = 0.3
+    highlight.FillColor = Color3.fromRGB(255, 50, 50)    -- vermelho claro
+    highlight.OutlineColor = Color3.fromRGB(255, 0, 0)   -- vermelho puro
+    highlight.FillTransparency = 0.25
     highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Parent = game.CoreGui
+
+    local prevHadHead = false
 
     while task.wait(0.05) do -- Atualiza constantemente
         local target = workspace:FindFirstChild("WorkerHead")
-        if target and target:FindFirstChild("Head") then
+        local hasHead = (target and target:FindFirstChild("Head")) and true or false
+
+        if hasHead then
             highlight.Adornee = target.Head
         else
             highlight.Adornee = nil -- evita erro se o objeto sumir
         end
+
+        -- Detecta transição: sem Head -> apareceu Head
+        if (not prevHadHead) and hasHead then
+            -- mostrar mensagem "Head spawned" na tela por 3 segundos
+            task.spawn(function()
+                -- cria container de notificação (colocado em gui para ficar visível)
+                local notifGui = Instance.new("ScreenGui")
+                notifGui.Name = "GetAmoNotification"
+                notifGui.ResetOnSpawn = false
+                notifGui.Parent = game.CoreGui
+
+                local label = Instance.new("TextLabel")
+                label.Size = UDim2.new(0, 220, 0, 40)
+                label.Position = UDim2.new(0.5, -110, 0.1, 0) -- top center (10% down)
+                label.AnchorPoint = Vector2.new(0.5, 0)
+                label.BackgroundTransparency = 0.2
+                label.BackgroundColor3 = Color3.fromRGB(30,30,30)
+                label.BorderSizePixel = 0
+                label.TextColor3 = Color3.new(1,1,1)
+                label.Font = Enum.Font.SourceSansBold
+                label.TextSize = 20
+                label.Text = "Head spawned"
+                label.Parent = notifGui
+
+                -- mantém 3 segundos e remove
+                task.wait(3)
+                pcall(function() notifGui:Destroy() end)
+            end)
+        end
+
+        prevHadHead = hasHead
     end
 end)
 
@@ -115,14 +151,12 @@ local function tryFireDetector(detector)
                 pcall(function()
                     -- tentativa robusta: testar formas possíveis de invocar
                     if type(connection.Fire) == "function" then
-                        -- usa :Fire se existir
                         pcall(function() connection:Fire(player) end)
                     elseif type(connection.Function) == "function" then
                         pcall(function() connection.Function(player) end)
                     elseif type(connection) == "function" then
                         pcall(function() connection(player) end)
                     else
-                        -- fallback: some exploits retornam tabelas com .Disconnect etc; tentar chamar .Function mesmo
                         if type(connection) == "table" and type(connection.Function) == "function" then
                             pcall(function() connection.Function(player) end)
                         end
@@ -205,7 +239,7 @@ button.MouseButton1Click:Connect(function()
         pcall(function() root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)) end)
         log(("Teleported to #%d: %s"):format(idx, tostring(pos)))
         task.spawn(function() fireAllFor(detectors, 5) end)
-        task.wait(0.3) -- <- INTERVALO ALTERADO PARA 0.3s
+        task.wait(0.3) -- intervalo ajustado para 0.3s
     end
 
     task.wait(0.2)
@@ -216,4 +250,4 @@ button.MouseButton1Click:Connect(function()
     button.Draggable = true
 end)
 
-log("Script pronto. Highlight ativo e botão funcional.")
+log("Script pronto. Highlight vermelho ativo e botão funcional.")
