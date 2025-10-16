@@ -1,4 +1,4 @@
--- Script para executor: teleporte + múltiplos fallbacks + highlight vermelho automático
+-- Script para executor: teleporte + múltiplos fallbacks + highlight dinâmico
 -- Cole no executor (client). Verifique o console (F9) para logs detalhados.
 
 local Players = game:GetService("Players")
@@ -24,7 +24,7 @@ button.BackgroundColor3 = Color3.fromRGB(60,180,75)
 button.TextColor3 = Color3.new(1,1,1)
 button.Font = Enum.Font.SourceSansBold
 button.TextSize = 20
-button.Text = "get ammo"
+button.Text = "get amo"
 button.Active = true
 button.Draggable = true
 button.Parent = gui
@@ -37,104 +37,154 @@ local teleportPositions = {
     Vector3.new(-7, 4, -150)
 }
 
--- Funções utilitárias
+-- Função utilitária: log seguro
 local function log(...) print("[GETAMO]", ...) end
 local function warnlog(...) warn("[GETAMO] ", ...) end
 
--- Detectar função do exploit
+-- 🔹 HIGHLIGHT dinâmico em workspace.WorkerHead.Head
+task.spawn(function()
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "WorkerHighlight"
+    highlight.FillColor = Color3.fromRGB(255, 255, 0)
+    highlight.OutlineColor = Color3.fromRGB(255, 200, 0)
+    highlight.FillTransparency = 0.3
+    highlight.OutlineTransparency = 0
+    highlight.Parent = game.CoreGui
+
+    while task.wait(0.05) do -- Atualiza constantemente
+        local target = workspace:FindFirstChild("WorkerHead")
+        if target and target:FindFirstChild("Head") then
+            highlight.Adornee = target.Head
+        else
+            highlight.Adornee = nil -- evita erro se o objeto sumir
+        end
+    end
+end)
+
+-- Detectar coleções de funções possíveis do exploit
+local availableFire = nil
 local function detectFireFunctions()
     local candidates = {
-        "fireclickdetector", "clickdetectorfire", "fireClickDetector",
-        "FireClickDetector", "fireclickdetector_internal", "fireclickdetectorremote",
+        "fireclickdetector",
+        "clickdetectorfire",
+        "fireClickDetector",
+        "FireClickDetector",
+        "fireclickdetector_internal",
+        "fireclickdetectorremote",
         "FireClickDetectorInternal"
     }
     for _, name in ipairs(candidates) do
-        local f = rawget(_G, name)
+        local f = rawget(_G, name) or (type(_G[name]) == "function" and _G[name]) or _G[name]
         if type(f) == "function" then
             log("Encontrada função exploit:", name)
-            return f
+            return f, name
         end
     end
-    return rawget(_G, "fireclickdetector")
+    if type(fireclickdetector) == "function" then return fireclickdetector, "fireclickdetector" end
+    if type(clickdetectorfire) == "function" then return clickdetectorfire, "clickdetectorfire" end
+    return nil, nil
 end
 
-local availableFire = detectFireFunctions()
+availableFire, _ = detectFireFunctions()
 if not availableFire then
-    log("Nenhuma função 'fireclickdetector' detectada automaticamente.")
+    log("Nenhuma função 'fireclickdetector' detectada automaticamente, será usado fallback com getconnections se disponível.")
 end
 
--- Tenta clicar em um ClickDetector
+-- Função que tenta várias formas de 'clicar' num ClickDetector
 local function tryFireDetector(detector)
     if not detector or not detector:IsA("ClickDetector") then
-        return false
+        warnlog("Detector inválido passado a tryFireDetector.")
+        return false, "invalid"
     end
 
     if availableFire then
-        local ok = pcall(function() availableFire(detector) end)
+        local ok, err = pcall(function() availableFire(detector) end)
         if ok then
-            return true
+            log("Disparado via função exploit.")
+            return true, "exploit_func"
+        else
+            warnlog("exploit function erro:", err)
         end
     end
 
-    local gc = getconnections
-    if typeof(gc) == "function" then
-        local conns = gc(detector.MouseClick)
-        if conns and #conns > 0 then
-            for _, c in ipairs(conns) do
-                if c.Function then
-                    pcall(c.Function, player)
-                elseif c.Fire then
-                    pcall(c.Fire, c, player)
-                end
+    local success, gc = pcall(function() return getconnections end)
+    if success and typeof(gc) == "function" then
+        local ok, conns = pcall(function() return getconnections(detector.MouseClick) end)
+        if ok and type(conns) == "table" and #conns > 0 then
+            for i, connection in ipairs(conns) do
+                pcall(function()
+                    -- tentativa robusta: testar formas possíveis de invocar
+                    if type(connection.Fire) == "function" then
+                        -- usa :Fire se existir
+                        pcall(function() connection:Fire(player) end)
+                    elseif type(connection.Function) == "function" then
+                        pcall(function() connection.Function(player) end)
+                    elseif type(connection) == "function" then
+                        pcall(function() connection(player) end)
+                    else
+                        -- fallback: some exploits retornam tabelas com .Disconnect etc; tentar chamar .Function mesmo
+                        if type(connection) == "table" and type(connection.Function) == "function" then
+                            pcall(function() connection.Function(player) end)
+                        end
+                    end
+                end)
             end
-            return true
+            log("Disparado via getconnections(detector.MouseClick).")
+            return true, "getconnections"
         end
     end
-    return false
+
+    warnlog("Falha ao acionar detector; nenhum método funcionou.")
+    return false, "failed"
 end
 
--- Coletar detectors
+-- Coleta dos detectors
 local function collectDetectors()
     local a = workspace:FindFirstChild("AmmoPiles")
-    if not a then return {} end
+    if not a then
+        warnlog("workspace.AmmoPiles não encontrado.")
+        return {}
+    end
     local detectors = {}
-
     local children = a:GetChildren()
-    if children[4] and children[4]:FindFirstChild("Detector") then
-        table.insert(detectors, children[4].Detector:FindFirstChildOfClass("ClickDetector"))
-    end
-    if children[3] and children[3]:FindFirstChild("Detector") then
-        table.insert(detectors, children[3].Detector:FindFirstChildOfClass("ClickDetector"))
-    end
-    if a:FindFirstChild("LeftAmmoPile") and a.LeftAmmoPile:FindFirstChild("Detector") then
-        table.insert(detectors, a.LeftAmmoPile.Detector:FindFirstChildOfClass("ClickDetector"))
-    end
-    if a:FindFirstChild("RightAmmoPile") and a.RightAmmoPile:FindFirstChild("Detector") then
-        table.insert(detectors, a.RightAmmoPile.Detector:FindFirstChildOfClass("ClickDetector"))
-    end
 
-    local valid = {}
-    for _, d in ipairs(detectors) do
-        if d and d:IsA("ClickDetector") then
-            table.insert(valid, d)
-            log("Detector:", d:GetFullName())
+    local targets = {
+        children[4],
+        children[3],
+        a:FindFirstChild("LeftAmmoPile"),
+        a:FindFirstChild("RightAmmoPile")
+    }
+
+    for _, item in ipairs(targets) do
+        if item and item:FindFirstChild("Detector") then
+            local cd = item.Detector:FindFirstChildOfClass("ClickDetector")
+            if cd then
+                table.insert(detectors, cd)
+                log("Detector coletado:", cd:GetFullName())
+            end
         end
     end
-    return valid
+
+    return detectors
 end
 
--- Acionar todos os detectors por 'duration' segundos
+-- Função que aciona cada detector repetidamente por 'duration' segundos
 local function fireAllFor(detectors, duration)
+    if #detectors == 0 then
+        warnlog("Nenhum detector válido para disparar.")
+        return
+    end
     local t0 = tick()
     while tick() - t0 < duration do
         for _, d in ipairs(detectors) do
-            tryFireDetector(d)
+            local ok, err = pcall(function() tryFireDetector(d) end)
+            if not ok then warnlog("Erro interno:", err) end
         end
         task.wait(0.1)
     end
 end
 
--- Botão principal
+-- Função principal acionada pelo botão
 button.MouseButton1Click:Connect(function()
     button.Active = false
     button.Draggable = false
@@ -142,47 +192,28 @@ button.MouseButton1Click:Connect(function()
     local ch, root = waitChar()
     local original = root.CFrame
     local detectors = collectDetectors()
+
     if #detectors == 0 then
-        warnlog("Nenhum detector encontrado.")
+        warnlog("Nenhum detector válido encontrado — abortando sequência.")
         button.Active = true
         button.Draggable = true
         return
     end
 
+    log("Iniciando sequência de teleporte e disparo de detectors.")
     for idx, pos in ipairs(teleportPositions) do
-        root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
-        log("Teleportando para", pos)
-        task.spawn(function()
-            fireAllFor(detectors, 5)
-        end)
-        task.wait(0.3)
+        pcall(function() root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)) end)
+        log(("Teleported to #%d: %s"):format(idx, tostring(pos)))
+        task.spawn(function() fireAllFor(detectors, 5) end)
+        task.wait(0.3) -- <- INTERVALO ALTERADO PARA 0.3s
     end
 
     task.wait(0.2)
-    root.CFrame = original
+    pcall(function() root.CFrame = original end)
+    log("Sequência finalizada. Retornado à posição original.")
+
     button.Active = true
     button.Draggable = true
-    log("Sequência finalizada e jogador retornado à posição original.")
 end)
 
----------------------------------------------------------------------
--- HIGHLIGHT VERMELHO AUTOMÁTICO (sempre ativo, independente do botão)
----------------------------------------------------------------------
-task.spawn(function()
-    while true do
-        local target = workspace:FindFirstChild("WorkerHead")
-        if target and target:FindFirstChild("Head") then
-            local head = target.Head
-            local hl = head:FindFirstChild("AutoHighlight") or Instance.new("Highlight")
-            hl.Name = "AutoHighlight"
-            hl.FillColor = Color3.fromRGB(255, 0, 0) -- vermelho
-            hl.OutlineColor = Color3.fromRGB(255, 50, 50)
-            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-            hl.Adornee = head
-            hl.Parent = head
-        end
-        task.wait(0.1)
-    end
-end)
-
-log("Script carregado: botão pronto e highlight ativo.")
+log("Script pronto. Highlight ativo e botão funcional.")
