@@ -239,7 +239,7 @@ button.MouseButton1Click:Connect(function()
         pcall(function() root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)) end)
         log(("Teleported to #%d: %s"):format(idx, tostring(pos)))
         task.spawn(function() fireAllFor(detectors, 5) end)
-        task.wait(0.3) -- intervalo ajustado para 0.3s
+        task.wait(0.2) -- intervalo ajustado para 0.3s
     end
 
     task.wait(0.2)
