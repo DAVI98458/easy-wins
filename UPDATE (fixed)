@@ -155,7 +155,7 @@ button.MouseButton1Click:Connect(function()
         task.spawn(function()
             fireAllFor(detectors, 5)
         end)
-        task.wait(1)
+        task.wait(0.3)
     end
 
     task.wait(0.2)
