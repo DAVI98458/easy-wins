@@ -1,17 +1,116 @@
--- Script para executor: teleporte + múltiplos fallbacks + highlight vermelho + notificação "Head spawned"
--- Cole no executor (client). Verifique o console (F9) para logs detalhados.
+-- Script unificado: mantém o mecanismo original de ClickDetector que funciona + whitelist + highlight + som + teleports
+-- Cole no executor (client). Use F9 para abrir console se precisar debugar localmente.
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- Segurança: espera o personagem
+-- ======= Configurações =======
+local WHITELIST = {
+    "lindao_gojo3",
+    "lindao_gojo7"
+}
+local DISCORD_LINK = "https://discord.gg/X2k52XZwjX"
+
+local teleportPositions = {
+    Vector3.new(-45, 4, -66),
+    Vector3.new(52, 4, 283),
+    Vector3.new(95, 4, 179),
+    Vector3.new(-7, 4, -150)
+}
+
+local REMOTE_LOOP_DURATION = 5     -- segundos que cada loop de click/remote roda por teleporte
+local TELEPORT_INTERVAL = 0.3      -- tempo entre teleports
+local FIRE_LOOP_STEP = 0.1         -- intervalo interno entre tentativas de disparo
+
+-- ======= Helpers de UI minimal (somente whitelist e Head spawned) =======
+local function showCenterMessage(text, duration, bgColor, textColor)
+    duration = duration or 3
+    bgColor = bgColor or Color3.fromRGB(30,30,30)
+    textColor = textColor or Color3.new(1,1,1)
+
+    local screen = Instance.new("ScreenGui")
+    screen.Name = "GetAmo_Message"
+    screen.ResetOnSpawn = false
+    screen.Parent = game.CoreGui
+
+    local frame = Instance.new("Frame", screen)
+    frame.Size = UDim2.new(0.5, 0, 0.14, 0)
+    frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.BackgroundColor3 = bgColor
+    frame.BackgroundTransparency = 0.35
+    frame.BorderSizePixel = 0
+
+    local label = Instance.new("TextLabel", frame)
+    label.Size = UDim2.new(1, -8, 1, -8)
+    label.Position = UDim2.new(0, 4, 0, 4)
+    label.BackgroundTransparency = 1
+    label.Text = tostring(text)
+    label.TextColor3 = textColor
+    label.Font = Enum.Font.SourceSansBold
+    label.TextSize = 20
+    label.TextWrapped = true
+    label.TextScaled = true
+    label.TextTransparency = 1
+
+    -- fade in
+    local steps = 10
+    for i = 1, steps do
+        local a = i/steps
+        label.TextTransparency = 1 - a
+        frame.BackgroundTransparency = 0.35 * (1 - a)
+        task.wait(0.02)
+    end
+
+    task.delay(duration, function()
+        for i = 1, steps do
+            local a = i/steps
+            label.TextTransparency = a
+            frame.BackgroundTransparency = 0.35 * a
+            task.wait(0.02)
+        end
+        pcall(function() screen:Destroy() end)
+    end)
+end
+
+local function playAlertSound(duration)
+    duration = duration or 3
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://138087386" -- alerta genérico (troque se quiser)
+    sound.Volume = 1
+    sound.Looped = false
+    sound.Parent = game.CoreGui
+    pcall(function() sound:Play() end)
+    task.delay(duration, function()
+        pcall(function() sound:Stop(); sound:Destroy() end)
+    end)
+end
+
+-- ======= Whitelist check (apenas mensagens de whitelist) =======
+local function isWhitelisted(name)
+    for _, v in ipairs(WHITELIST) do
+        if v == name then return true end
+    end
+    return false
+end
+
+if not isWhitelisted(player.Name) then
+    -- mostra mensagem de não autorizado e copia link
+    pcall(function() setclipboard(DISCORD_LINK) end)
+    showCenterMessage("Unauthorized due to script update. Visit our Discord to whitelist (link copied).", 4, Color3.fromRGB(180,40,40))
+    return
+else
+    showCenterMessage("Authorization confirmed by the OWNER — take advantage", 2, Color3.fromRGB(30,120,40))
+end
+
+-- ======= Espera personagem pronto =======
 local function waitChar()
     local ch = player.Character or player.CharacterAdded:Wait()
     local root = ch:WaitForChild("HumanoidRootPart", 5)
     return ch, root
 end
 
--- Cria GUI no CoreGui (executor)
+-- ======= Cria GUI e botão no CoreGui (como no seu script) =======
 local gui = Instance.new("ScreenGui")
 gui.Name = "GetAmoGUI"
 gui.Parent = game.CoreGui
@@ -29,46 +128,34 @@ button.Active = true
 button.Draggable = true
 button.Parent = gui
 
--- Posições de teleporte
-local teleportPositions = {
-    Vector3.new(-45, 4, -66),
-    Vector3.new(52, 4, 283),
-    Vector3.new(95, 4, 179),
-    Vector3.new(-7, 4, -150)
-}
+-- ======= Posições de teleporte (mantidas) =======
+-- já definidas acima em teleportPositions
 
--- Função utilitária: log seguro
-local function log(...) print("[GETAMO]", ...) end
-local function warnlog(...) warn("[GETAMO] ", ...) end
-
--- 🔹 HIGHLIGHT dinâmico em workspace.WorkerHead.Head (Vermelho) + notificação "Head spawned"
+-- ======= Highlight dinâmico + notificação "Head spawned" com som (detecção de transição) =======
 task.spawn(function()
     local highlight = Instance.new("Highlight")
     highlight.Name = "WorkerHighlight"
-    highlight.FillColor = Color3.fromRGB(255, 50, 50)    -- vermelho claro
-    highlight.OutlineColor = Color3.fromRGB(255, 0, 0)   -- vermelho puro
+    highlight.FillColor = Color3.fromRGB(255, 50, 50)
+    highlight.OutlineColor = Color3.fromRGB(255, 0, 0)
     highlight.FillTransparency = 0.25
     highlight.OutlineTransparency = 0
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Parent = game.CoreGui
 
     local prevHadHead = false
-
-    while task.wait(0.05) do -- Atualiza constantemente
+    while task.wait(0.05) do
         local target = workspace:FindFirstChild("WorkerHead")
         local hasHead = (target and target:FindFirstChild("Head")) and true or false
 
         if hasHead then
             highlight.Adornee = target.Head
         else
-            highlight.Adornee = nil -- evita erro se o objeto sumir
+            highlight.Adornee = nil
         end
 
-        -- Detecta transição: sem Head -> apareceu Head
         if (not prevHadHead) and hasHead then
-            -- mostrar mensagem "Head spawned" na tela por 3 segundos
+            -- notificação "Head spawned" por 3 segundos + som
             task.spawn(function()
-                -- cria container de notificação (colocado em gui para ficar visível)
                 local notifGui = Instance.new("ScreenGui")
                 notifGui.Name = "GetAmoNotification"
                 notifGui.ResetOnSpawn = false
@@ -87,7 +174,7 @@ task.spawn(function()
                 label.Text = "Head spawned"
                 label.Parent = notifGui
 
-                -- mantém 3 segundos e remove
+                playAlertSound(3)
                 task.wait(3)
                 pcall(function() notifGui:Destroy() end)
             end)
@@ -97,7 +184,7 @@ task.spawn(function()
     end
 end)
 
--- Detectar coleções de funções possíveis do exploit
+-- ======= Detecta funções exploit (mantido como no seu script que funciona) =======
 local availableFire = nil
 local function detectFireFunctions()
     local candidates = {
@@ -112,7 +199,6 @@ local function detectFireFunctions()
     for _, name in ipairs(candidates) do
         local f = rawget(_G, name) or (type(_G[name]) == "function" and _G[name]) or _G[name]
         if type(f) == "function" then
-            log("Encontrada função exploit:", name)
             return f, name
         end
     end
@@ -122,34 +208,28 @@ local function detectFireFunctions()
 end
 
 availableFire, _ = detectFireFunctions()
-if not availableFire then
-    log("Nenhuma função 'fireclickdetector' detectada automaticamente, será usado fallback com getconnections se disponível.")
-end
 
--- Função que tenta várias formas de 'clicar' num ClickDetector
+-- ======= tryFireDetector preservado integralmente (seu código que funciona) =======
 local function tryFireDetector(detector)
     if not detector or not detector:IsA("ClickDetector") then
-        warnlog("Detector inválido passado a tryFireDetector.")
         return false, "invalid"
     end
 
+    -- 1) Tentar função exploit (se disponível)
     if availableFire then
         local ok, err = pcall(function() availableFire(detector) end)
         if ok then
-            log("Disparado via função exploit.")
             return true, "exploit_func"
-        else
-            warnlog("exploit function erro:", err)
         end
     end
 
+    -- 2) getconnections fallback
     local success, gc = pcall(function() return getconnections end)
     if success and typeof(gc) == "function" then
         local ok, conns = pcall(function() return getconnections(detector.MouseClick) end)
         if ok and type(conns) == "table" and #conns > 0 then
             for i, connection in ipairs(conns) do
                 pcall(function()
-                    -- tentativa robusta: testar formas possíveis de invocar
                     if type(connection.Fire) == "function" then
                         pcall(function() connection:Fire(player) end)
                     elseif type(connection.Function) == "function" then
@@ -163,20 +243,17 @@ local function tryFireDetector(detector)
                     end
                 end)
             end
-            log("Disparado via getconnections(detector.MouseClick).")
             return true, "getconnections"
         end
     end
 
-    warnlog("Falha ao acionar detector; nenhum método funcionou.")
     return false, "failed"
 end
 
--- Coleta dos detectors
+-- ======= Coleta dos detectors (mantido) =======
 local function collectDetectors()
     local a = workspace:FindFirstChild("AmmoPiles")
     if not a then
-        warnlog("workspace.AmmoPiles não encontrado.")
         return {}
     end
     local detectors = {}
@@ -194,7 +271,6 @@ local function collectDetectors()
             local cd = item.Detector:FindFirstChildOfClass("ClickDetector")
             if cd then
                 table.insert(detectors, cd)
-                log("Detector coletado:", cd:GetFullName())
             end
         end
     end
@@ -202,23 +278,19 @@ local function collectDetectors()
     return detectors
 end
 
--- Função que aciona cada detector repetidamente por 'duration' segundos
+-- ======= Executa cada detector por 'duration' segundos (mantido) =======
 local function fireAllFor(detectors, duration)
-    if #detectors == 0 then
-        warnlog("Nenhum detector válido para disparar.")
-        return
-    end
+    if #detectors == 0 then return end
     local t0 = tick()
     while tick() - t0 < duration do
         for _, d in ipairs(detectors) do
-            local ok, err = pcall(function() tryFireDetector(d) end)
-            if not ok then warnlog("Erro interno:", err) end
+            pcall(function() tryFireDetector(d) end)
         end
-        task.wait(0.1)
+        task.wait(FIRE_LOOP_STEP)
     end
 end
 
--- Função principal acionada pelo botão
+-- ======= Função principal acionada pelo botão (mantida, com teleports) =======
 button.MouseButton1Click:Connect(function()
     button.Active = false
     button.Draggable = false
@@ -228,26 +300,22 @@ button.MouseButton1Click:Connect(function()
     local detectors = collectDetectors()
 
     if #detectors == 0 then
-        warnlog("Nenhum detector válido encontrado — abortando sequência.")
         button.Active = true
         button.Draggable = true
         return
     end
 
-    log("Iniciando sequência de teleporte e disparo de detectors.")
     for idx, pos in ipairs(teleportPositions) do
         pcall(function() root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)) end)
-        log(("Teleported to #%d: %s"):format(idx, tostring(pos)))
-        task.spawn(function() fireAllFor(detectors, 5) end)
-        task.wait(0.3) -- intervalo ajustado para 0.3s
+        task.spawn(function() fireAllFor(detectors, REMOTE_LOOP_DURATION) end)
+        task.wait(TELEPORT_INTERVAL)
     end
 
     task.wait(0.2)
     pcall(function() root.CFrame = original end)
-    log("Sequência finalizada. Retornado à posição original.")
 
     button.Active = true
     button.Draggable = true
 end)
 
-log("Script pronto. Highlight vermelho ativo e botão funcional.")
+-- ======= Fim =======
