@@ -7,7 +7,10 @@ local player = Players.LocalPlayer
 -- ======= Configurações =======
 local WHITELIST = {
     "lindao_gojo3",
-    "Dz7_Exit"
+    "Dz7_Exit",
+    "Henriquegamerjjj",
+    "mago9272891",
+    "NguyenphongZfypK"
 }
 local DISCORD_LINK = "https://discord.gg/X2k52XZwjX"
 
