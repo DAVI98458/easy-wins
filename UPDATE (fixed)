@@ -22,7 +22,7 @@ local teleportPositions = {
 }
 
 local REMOTE_LOOP_DURATION = 5     -- segundos que cada loop de click/remote roda por teleporte
-local TELEPORT_INTERVAL = 0.2      -- tempo entre teleports
+local TELEPORT_INTERVAL = 0.1      -- tempo entre teleports
 local FIRE_LOOP_STEP = 0.1         -- intervalo interno entre tentativas de disparo
 
 -- ======= Helpers de UI minimal (somente whitelist e Head spawned) =======
