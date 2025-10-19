@@ -22,7 +22,7 @@ local teleportPositions = {
     Vector3.new(-7, 4, -150)
 }
 local REMOTE_LOOP_DURATION = 5
-local TELEPORT_INTERVAL = 0.3 -- Get Ammo teleport interval
+local TELEPORT_INTERVAL = 0.1 -- Get Ammo teleport interval
 local FIRE_LOOP_STEP = 0.1
 
 -- Teleport positions do TextBox
@@ -76,7 +76,7 @@ if not authorized then
     showCenterMessage("Unauthorized. Discord link copied.",5)
     return
 else
-    showCenterMessage("Authorization confirmed!",3)
+    showCenterMessage("Authorization confirmed :3 Thanks for using my script",5)
 end
 
 -- ===== Espera personagem pronto =====
