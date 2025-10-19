@@ -1,5 +1,5 @@
--- Script unificado com whitelist, Get Ammo, campo de texto teleport, e GUI funcional
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
 -- ===== Configurações =====
@@ -23,15 +23,8 @@ local teleportPositions = {
     Vector3.new(-7, 4, -150)
 }
 local REMOTE_LOOP_DURATION = 5
-local TELEPORT_INTERVAL = 0.1 -- Get Ammo teleport interval
+local TELEPORT_INTERVAL = 0.3
 local FIRE_LOOP_STEP = 0.1
-
--- Teleport positions do TextBox
-local textboxPositions = {
-    ["1"] = Vector3.new(102, 4, -243),
-    ["2"] = Vector3.new(-33, 4, 67),
-    ["3"] = Vector3.new(-41, 4, 268)
-}
 
 -- ===== Funções de GUI =====
 local function showCenterMessage(text,duration)
@@ -47,8 +40,6 @@ local function showCenterMessage(text,duration)
     frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
     frame.BackgroundTransparency = 0.35
     frame.BorderSizePixel = 0
-    frame.ClipsDescendants = true
-    frame.AutomaticSize = Enum.AutomaticSize.None
 
     local label = Instance.new("TextLabel", frame)
     label.Size = UDim2.new(1,0,1,0)
@@ -63,7 +54,7 @@ local function showCenterMessage(text,duration)
     end)
 end
 
--- ===== Whitelist check =====
+-- ===== Whitelist =====
 local authorized = false
 for _,name in ipairs(WHITELIST) do
     if player.Name == name then
@@ -77,7 +68,7 @@ if not authorized then
     showCenterMessage("Unauthorized. Discord link copied.",5)
     return
 else
-    showCenterMessage("Authorization confirmed :3 Thanks for using my script",5)
+    showCenterMessage("Authorization confirmed!",3)
 end
 
 -- ===== Espera personagem pronto =====
@@ -105,26 +96,6 @@ button.Text = "Get Ammo"
 button.Active = true
 button.Draggable = true
 button.Parent = gui
-
--- ===== Campo de Texto =====
-local textBox = Instance.new("TextBox")
-textBox.Size = UDim2.new(0,120,0,40)
-textBox.Position = UDim2.new(1,-130,0,60)
-textBox.AnchorPoint = Vector2.new(0,0)
-textBox.BackgroundColor3 = Color3.fromRGB(50,50,50)
-textBox.BackgroundTransparency = 0.5
-textBox.TextColor3 = Color3.new(1,1,1)
-textBox.Font = Enum.Font.SourceSansBold
-textBox.TextSize = 18
-textBox.PlaceholderText = "Digite 1,2 ou 3"
-textBox.ClearTextOnFocus = true
-textBox.Active = true
-textBox.Draggable = true
-textBox.Parent = gui
-textBox.TextStrokeTransparency = 0.8
-textBox.TextWrapped = true
-textBox.TextScaled = true
-textBox.ClipsDescendants = true
 
 -- ===== Funções Fire ClickDetector =====
 local availableFire = nil
@@ -230,12 +201,39 @@ button.MouseButton1Click:Connect(function()
     button.Draggable = true
 end)
 
--- ===== Função TextBox teleport =====
-textBox.FocusLost:Connect(function(enterPressed)
-    local value = textBox.Text
-    local targetPos = textboxPositions[value]
-    if targetPos then
-        local ch,root = waitChar()
-        root.CFrame = CFrame.new(targetPos + Vector3.new(0,3,0))
+-- ===== Highlights e Head spawned =====
+local function createHighlight(parent)
+    local hl = Instance.new("Highlight")
+    hl.FillColor = Color3.fromRGB(255,0,0)
+    hl.OutlineColor = Color3.fromRGB(255,0,0)
+    hl.Adornee = parent
+    hl.Parent = gui
+    return hl
+end
+
+-- Objetos
+local mutant = ReplicatedStorage:WaitForChild("Mutant")
+local workerHead = ReplicatedStorage:WaitForChild("WorkerHead")
+
+local mutantHL = createHighlight(mutant)
+local workerHL = createHighlight(workerHead)
+
+-- Loop para atualizar highlights e mensagem Head spawned
+task.spawn(function()
+    while true do
+        task.wait(0) -- Atualização contínua
+
+        -- Atualiza a adorna do highlight
+        if mutantHL and mutant then mutantHL.Adornee = mutant end
+        if workerHL and workerHead then workerHL.Adornee = workerHead end
+
+        -- Mensagem "Head spawned" se estiver a 30 studs do jogador
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") and workerHead then
+            local dist = (char.HumanoidRootPart.Position - workerHead.Position).Magnitude
+            if dist <= 30 then
+                showCenterMessage("Head spawned",2)
+            end
+        end
     end
 end)
