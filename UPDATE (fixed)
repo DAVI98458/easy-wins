@@ -1,243 +1,403 @@
--- Script unificado com whitelist, Get Ammo, campo de texto teleport, e GUI funcional
+-- Script completo: whitelist -> confirmação -> barra 30s -> GUI (Get Ammo + TextBox) -> teleports + fire ClickDetectors
+-- Cole no client (executor / LocalScript)
+
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
 
--- ===== Configurações =====
+-- ======= CONFIGURAÇÃO =======
 local WHITELIST = {
-"lindao_gojo3",
-"Dz7_Exit",
-"NguyenphongZfypK",
-"mago9272891",
-"Henriquegamerjjj",
-"ERrOr999898",
-"jdnekddo2",
-"tuqtc374",
-"pancha_gamer1234"
-
+    "lindao_gojo3",
+    "pancha_gamer1234",
+    "tuqtc374",
+    "jdnekddo2",
+    "ERrOr999898",
+    "Henriquegamerjjj",
+    "Dz7_Exit"
 }
 local DISCORD_LINK = "https://discord.gg/X2k52XZwjX"
 
--- Teleport positions do Get Ammo
-local teleportPositions = {
+local TELEPORT_POSITIONS = {
     Vector3.new(-45, 4, -66),
     Vector3.new(52, 4, 283),
     Vector3.new(95, 4, 179),
     Vector3.new(-7, 4, -150)
 }
-local REMOTE_LOOP_DURATION = 5
-local TELEPORT_INTERVAL = 0.1 -- Get Ammo teleport interval
-local FIRE_LOOP_STEP = 0.1
-
--- Teleport positions do TextBox
-local textboxPositions = {
+local TEXT_TELEPORTS = {
     ["1"] = Vector3.new(102, 4, -243),
     ["2"] = Vector3.new(-33, 4, 67),
     ["3"] = Vector3.new(-41, 4, 268)
 }
 
--- ===== Funções de GUI =====
-local function showCenterMessage(text,duration)
+local GET_AMMO_TELEPORT_INTERVAL = 0.3  -- intervalo entre teleports do Get Ammo
+local REMOTE_LOOP_DURATION = 5          -- tempo que os ClickDetectors serão acionados por teleporte
+local FIRE_LOOP_STEP = 0.1
+
+-- ======= UTILITÁRIOS =======
+local function isWhitelisted(name)
+    for _, v in ipairs(WHITELIST) do
+        if v == name then return true end
+    end
+    return false
+end
+
+local function safeSetClipboard(text)
+    pcall(function() setclipboard(text) end)
+end
+
+local function showCenterMessageOnPlayerGui(text, duration, bgColor, textColor)
     duration = duration or 3
+    bgColor = bgColor or Color3.fromRGB(30,30,30)
+    textColor = textColor or Color3.new(1,1,1)
+
     local screen = Instance.new("ScreenGui")
+    screen.Name = "GetAmo_Message"
     screen.ResetOnSpawn = false
-    screen.Parent = game.CoreGui
+    screen.Parent = PlayerGui
 
     local frame = Instance.new("Frame", screen)
-    frame.Size = UDim2.new(0.5,0,0.14,0)
-    frame.Position = UDim2.new(0.5,0,0.5,0)
-    frame.AnchorPoint = Vector2.new(0.5,0.5)
-    frame.BackgroundColor3 = Color3.fromRGB(30,30,30)
-    frame.BackgroundTransparency = 0.35
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.Size = UDim2.new(0.5, 0, 0.14, 0)
+    frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    frame.BackgroundColor3 = bgColor
+    frame.BackgroundTransparency = 0.25
     frame.BorderSizePixel = 0
-    frame.ClipsDescendants = true
-    frame.AutomaticSize = Enum.AutomaticSize.None
+    local corner = Instance.new("UICorner", frame); corner.CornerRadius = UDim.new(0, 12)
 
     local label = Instance.new("TextLabel", frame)
-    label.Size = UDim2.new(1,0,1,0)
+    label.Size = UDim2.new(1, -12, 1, -12)
+    label.Position = UDim2.new(0, 6, 0, 6)
     label.BackgroundTransparency = 1
     label.Text = text
-    label.TextColor3 = Color3.new(1,1,1)
+    label.TextColor3 = textColor
     label.Font = Enum.Font.SourceSansBold
     label.TextScaled = true
+    label.TextWrapped = true
 
-    task.delay(duration,function()
+    -- Fade in/out simples
+    label.TextTransparency = 1
+    for i=1,10 do
+        label.TextTransparency = 1 - i/10
+        frame.BackgroundTransparency = 0.25 * (1 - i/10)
+        task.wait(0.02)
+    end
+
+    task.delay(duration, function()
+        for i=1,10 do
+            label.TextTransparency = i/10
+            frame.BackgroundTransparency = 0.25 * (i/10)
+            task.wait(0.02)
+        end
         pcall(function() screen:Destroy() end)
     end)
 end
 
--- ===== Whitelist check =====
-local authorized = false
-for _,name in ipairs(WHITELIST) do
-    if player.Name == name then
-        authorized = true
-        break
-    end
-end
-
-if not authorized then
-    pcall(function() setclipboard(DISCORD_LINK) end)
-    showCenterMessage("Unauthorized. Discord link copied.",5)
+-- ======= CHECAGEM DE WHITELIST =======
+if not isWhitelisted(player.Name) then
+    safeSetClipboard(DISCORD_LINK)
+    showCenterMessageOnPlayerGui("authorization denied, visit our discord server to go to whitelist", 4, Color3.fromRGB(180,40,40))
     return
-else
-    showCenterMessage("Authorization confirmed:3",3)
 end
 
--- ===== Espera personagem pronto =====
-local function waitChar()
-    local ch = player.Character or player.CharacterAdded:Wait()
-    local root = ch:WaitForChild("HumanoidRootPart",5)
-    return ch, root
+-- se chegou aqui, autorizado
+showCenterMessageOnPlayerGui("Authorization confirmed :3", 2, Color3.fromRGB(30,120,40))
+
+-- espera curto antes de iniciar barra (dá tempo da mensagem aparecer)
+task.wait(0.6)
+
+-- ======= BARRA DE PROGRESSO (30s) =======
+local function showProgressBar(durationSeconds)
+    durationSeconds = durationSeconds or 30
+    local screen = Instance.new("ScreenGui")
+    screen.Name = "GetAmo_Progress"
+    screen.ResetOnSpawn = false
+    screen.Parent = PlayerGui
+
+    local frame = Instance.new("Frame", screen)
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.Size = UDim2.new(0.45, 0, 0.07, 0)
+    frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    frame.BorderSizePixel = 0
+    local frameCorner = Instance.new("UICorner", frame); frameCorner.CornerRadius = UDim.new(0, 14)
+
+    local barBg = Instance.new("Frame", frame)
+    barBg.Size = UDim2.new(0.92, 0, 0.48, 0)
+    barBg.Position = UDim2.new(0.04, 0, 0.25, 0)
+    barBg.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    barBg.BorderSizePixel = 0
+    local bgCorner = Instance.new("UICorner", barBg); bgCorner.CornerRadius = UDim.new(0, 10)
+
+    local barFill = Instance.new("Frame", barBg)
+    barFill.Size = UDim2.new(0,0,1,0)
+    barFill.Position = UDim2.new(0,0,0,0)
+    barFill.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+    barFill.BorderSizePixel = 0
+    local fillCorner = Instance.new("UICorner", barFill); fillCorner.CornerRadius = UDim.new(0,10)
+
+    local percentLabel = Instance.new("TextLabel", frame)
+    percentLabel.Size = UDim2.new(0.2, 0, 0.4, 0)
+    percentLabel.Position = UDim2.new(0.8, 0, 0.25, 0)
+    percentLabel.BackgroundTransparency = 1
+    percentLabel.Font = Enum.Font.SourceSansSemibold
+    percentLabel.TextColor3 = Color3.new(1,1,1)
+    percentLabel.TextScaled = true
+    percentLabel.Text = "0%"
+
+    -- Tween o preenchimento ao longo do tempo (suave)
+    local tweenInfo = TweenInfo.new(durationSeconds, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(barFill, tweenInfo, {Size = UDim2.new(1, 0, 1, 0)})
+    tween:Play()
+
+    -- atualizar label proporcionalmente
+    local start = tick()
+    local stop = start + durationSeconds
+    while tick() < stop do
+        local frac = math.clamp((tick() - start) / durationSeconds, 0, 1)
+        percentLabel.Text = tostring(math.floor(frac * 100)) .. "%"
+        task.wait(0.1)
+    end
+    percentLabel.Text = "100%"
+    task.wait(0.35)
+    pcall(function() screen:Destroy() end)
 end
 
--- ===== Criação do GUI =====
-local gui = Instance.new("ScreenGui")
-gui.Name = "GetAmoGUI"
-gui.Parent = game.CoreGui
+-- mostra barra de progresso (30s) e só depois cria GUI
+showProgressBar(30)
 
--- ===== Botão Get Ammo =====
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(0,120,0,40)
-button.Position = UDim2.new(1,-130,0,10)
-button.AnchorPoint = Vector2.new(0,0)
-button.BackgroundColor3 = Color3.fromRGB(60,180,75)
-button.TextColor3 = Color3.new(1,1,1)
-button.Font = Enum.Font.SourceSansBold
-button.TextSize = 20
-button.Text = "Get Ammo"
-button.Active = true
-button.Draggable = true
-button.Parent = gui
+-- ======= HIGHLIGHT DINÂMICO (WorkerHead) =======
+task.spawn(function()
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "WorkerHighlight"
+    highlight.FillColor = Color3.fromRGB(255,50,50)
+    highlight.OutlineColor = Color3.fromRGB(255,0,0)
+    highlight.FillTransparency = 0.25
+    highlight.OutlineTransparency = 0
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Parent = PlayerGui
 
--- ===== Campo de Texto =====
-local textBox = Instance.new("TextBox")
-textBox.Size = UDim2.new(0,120,0,40)
-textBox.Position = UDim2.new(1,-130,0,60)
-textBox.AnchorPoint = Vector2.new(0,0)
-textBox.BackgroundColor3 = Color3.fromRGB(50,50,50)
-textBox.BackgroundTransparency = 0.5
-textBox.TextColor3 = Color3.new(1,1,1)
-textBox.Font = Enum.Font.SourceSansBold
-textBox.TextSize = 18
-textBox.PlaceholderText = "Digite 1,2 ou 3"
-textBox.ClearTextOnFocus = false
-textBox.Active = true
-textBox.Draggable = true
-textBox.Parent = gui
-textBox.TextStrokeTransparency = 0.8
-textBox.TextWrapped = true
-textBox.TextScaled = true
-textBox.ClipsDescendants = true
-
--- ===== Funções Fire ClickDetector =====
-local availableFire = nil
-local function detectFireFunctions()
-    local candidates = {
-        "fireclickdetector",
-        "clickdetectorfire",
-        "fireClickDetector",
-        "FireClickDetector",
-        "fireclickdetector_internal",
-        "fireclickdetectorremote",
-        "FireClickDetectorInternal"
-    }
-    for _, name in ipairs(candidates) do
-        local f = rawget(_G,name) or (type(_G[name])=="function" and _G[name]) or _G[name]
-        if type(f)=="function" then
-            return f,name
+    while task.wait(0.05) do
+        local target = workspace:FindFirstChild("WorkerHead")
+        if target and target:FindFirstChild("Head") then
+            highlight.Adornee = target.Head
+        else
+            highlight.Adornee = nil
         end
     end
-    if type(fireclickdetector)=="function" then return fireclickdetector,"fireclickdetector" end
-    if type(clickdetectorfire)=="function" then return clickdetectorfire,"clickdetectorfire" end
-    return nil,nil
+end)
+
+-- ======= DETECTA FUNÇÕES EXPLOIT PARA FIRE CLICKDETECTOR =======
+local function detectFireFunctions()
+    local candidates = {
+        "fireclickdetector","clickdetectorfire","fireClickDetector","FireClickDetector",
+        "fireclickdetector_internal","fireclickdetectorremote","FireClickDetectorInternal"
+    }
+    for _, name in ipairs(candidates) do
+        local f = rawget(_G, name) or _G[name]
+        if type(f) == "function" then
+            return f, name
+        end
+    end
+    return nil, nil
 end
-availableFire,_ = detectFireFunctions()
+local availableFire, availableFireName = detectFireFunctions()
 
 local function tryFireDetector(detector)
-    if not detector or not detector:IsA("ClickDetector") then return false,"invalid" end
+    if not detector or not detector:IsA("ClickDetector") then return false end
+
+    -- 1) função exploit global (se detectada)
     if availableFire then
-        local ok,err = pcall(function() availableFire(detector) end)
-        if ok then return true,"exploit_func" end
+        local ok = pcall(function() availableFire(detector) end)
+        if ok then return true end
     end
-    local success,gc = pcall(function() return getconnections end)
-    if success and typeof(gc)=="function" then
-        local ok,conns = pcall(function() return getconnections(detector.MouseClick) end)
-        if ok and type(conns)=="table" and #conns>0 then
-            for _,c in ipairs(conns) do
+
+    -- 2) getconnections fallback
+    local okgc, gc = pcall(function() return getconnections end)
+    if okgc and typeof(gc) == "function" then
+        local ok, conns = pcall(function() return getconnections(detector.MouseClick) end)
+        if ok and type(conns) == "table" and #conns > 0 then
+            for _, conn in ipairs(conns) do
                 pcall(function()
-                    if type(c.Fire)=="function" then pcall(function() c:Fire(player) end)
-                    elseif type(c.Function)=="function" then pcall(function() c.Function(player) end)
-                    elseif type(c)=="function" then pcall(function() c(player) end)
-                    elseif type(c)=="table" and type(c.Function)=="function" then pcall(function() c.Function(player) end)
+                    if type(conn.Fire) == "function" then
+                        conn:Fire(player)
+                    elseif type(conn.Function) == "function" then
+                        conn.Function(player)
+                    elseif type(conn) == "function" then
+                        conn(player)
                     end
                 end)
             end
-            return true,"getconnections"
+            return true
         end
     end
-    return false,"failed"
+
+    -- 3) tentativa final falhou
+    return false
 end
 
--- ===== Função coletar ClickDetectors de Ammo =====
-local function collectDetectors()
+local function collectAmmoDetectors()
+    local t = {}
     local a = workspace:FindFirstChild("AmmoPiles")
-    if not a then return {} end
-    local detectors = {}
+    if not a then return t end
     local children = a:GetChildren()
-    local targets = {children[4],children[3],a:FindFirstChild("LeftAmmoPile"),a:FindFirstChild("RightAmmoPile")}
-    for _,item in ipairs(targets) do
+    -- índices 4 e 3, depois LeftAmmoPile e RightAmmoPile (como pedido)
+    local targets = { children[4], children[3], a:FindFirstChild("LeftAmmoPile"), a:FindFirstChild("RightAmmoPile") }
+    for _, item in ipairs(targets) do
         if item and item:FindFirstChild("Detector") then
             local cd = item.Detector:FindFirstChildOfClass("ClickDetector")
-            if cd then table.insert(detectors,cd) end
+            if cd then table.insert(t, cd) end
         end
     end
-    return detectors
+    return t
 end
 
-local function fireAllFor(detectors,duration)
-    if #detectors==0 then return end
+local function fireAllFor(detectors, duration)
+    if #detectors == 0 then return end
     local t0 = tick()
-    while tick()-t0 < duration do
-        for _,d in ipairs(detectors) do
+    while tick() - t0 < duration do
+        for _, d in ipairs(detectors) do
             pcall(function() tryFireDetector(d) end)
         end
         task.wait(FIRE_LOOP_STEP)
     end
 end
 
--- ===== Função Get Ammo =====
-button.MouseButton1Click:Connect(function()
-    button.Active = false
-    button.Draggable = false
+-- ======= CRIA GUI (após barra) =======
+local function makeDraggable(guiElement)
+    local dragging = false
+    local dragInput, dragStart, startPos
 
-    local ch,root = waitChar()
-    local original = root.CFrame
-    local detectors = collectDetectors()
+    local UserInputService = game:GetService("UserInputService")
 
-    if #detectors==0 then
-        button.Active = true
-        button.Draggable = true
+    local function update(input)
+        local delta = input.Position - dragStart
+        guiElement.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    guiElement.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = guiElement.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    guiElement.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            pcall(function() update(input) end)
+        end
+    end)
+end
+
+local function createMainGui()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "GetAmo_Main"
+    gui.ResetOnSpawn = false
+    gui.Parent = PlayerGui
+
+    -- Botão Get Ammo (canto superior direito)
+    local button = Instance.new("TextButton")
+    button.Name = "GetAmmoButton"
+    button.Size = UDim2.new(0, 140, 0, 44)
+    button.Position = UDim2.new(1, -160, 0, 12)
+    button.AnchorPoint = Vector2.new(0, 0)
+    button.BackgroundColor3 = Color3.fromRGB(60, 180, 75)
+    button.TextColor3 = Color3.new(1,1,1)
+    button.Font = Enum.Font.SourceSansBold
+    button.TextSize = 20
+    button.Text = "get ammo"
+    button.Active = true
+    button.Draggable = true
+    local bc = Instance.new("UICorner", button); bc.CornerRadius = UDim.new(0, 10)
+    button.Parent = gui
+    makeDraggable(button)
+
+    -- TextBox (abaixo do botão)
+    local textBox = Instance.new("TextBox")
+    textBox.Name = "QuickTeleportBox"
+    textBox.Size = UDim2.new(0, 140, 0, 36)
+    textBox.Position = UDim2.new(1, -160, 0, 64)
+    textBox.AnchorPoint = Vector2.new(0,0)
+    textBox.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    textBox.BackgroundTransparency = 0.45
+    textBox.TextColor3 = Color3.new(1,1,1)
+    textBox.Font = Enum.Font.SourceSansBold
+    textBox.TextSize = 18
+    textBox.PlaceholderText = "Digite 1,2 ou 3"
+    local tc = Instance.new("UICorner", textBox); tc.CornerRadius = UDim.new(0,8)
+    textBox.Parent = gui
+    makeDraggable(textBox)
+
+    return gui, button, textBox
+end
+
+local mainGui, getAmmoButton, quickBox = createMainGui()
+
+-- ======= Função do botão Get Ammo =======
+getAmmoButton.MouseButton1Click:Connect(function()
+    getAmmoButton.Active = false
+    getAmmoButton.Draggable = false
+
+    local ch, root = player.Character and player.Character:FindFirstChild("HumanoidRootPart") and (player.Character) or player.CharacterAdded:Wait()
+    ch = player.Character or ch
+    root = ch and ch:FindFirstChild("HumanoidRootPart")
+    if not root then
+        warn("[GetAmo] HumanoidRootPart não encontrado.")
+        getAmmoButton.Active = true
+        getAmmoButton.Draggable = true
         return
     end
 
-    for _,pos in ipairs(teleportPositions) do
+    local originalCFrame = root.CFrame
+    local detectors = collectAmmoDetectors()
+    if #detectors == 0 then
+        warn("[GetAmo] Nenhum detector encontrado em AmmoPiles.")
+        getAmmoButton.Active = true
+        getAmmoButton.Draggable = true
+        return
+    end
+
+    for _, pos in ipairs(TELEPORT_POSITIONS) do
         pcall(function() root.CFrame = CFrame.new(pos + Vector3.new(0,3,0)) end)
-        task.spawn(function() fireAllFor(detectors,REMOTE_LOOP_DURATION) end)
-        task.wait(TELEPORT_INTERVAL)
+        -- dispara os detectors por REMOTE_LOOP_DURATION em paralelo
+        task.spawn(function() fireAllFor(detectors, REMOTE_LOOP_DURATION) end)
+        task.wait(GET_AMMO_TELEPORT_INTERVAL)
     end
 
     task.wait(0.2)
-    pcall(function() root.CFrame = original end)
+    pcall(function() root.CFrame = originalCFrame end)
 
-    button.Active = true
-    button.Draggable = true
+    getAmmoButton.Active = true
+    getAmmoButton.Draggable = true
 end)
 
--- ===== Função TextBox teleport =====
-textBox.FocusLost:Connect(function(enterPressed)
-    local value = textBox.Text
-    local targetPos = textboxPositions[value]
-    if targetPos then
-        local ch,root = waitChar()
-        root.CFrame = CFrame.new(targetPos + Vector3.new(0,3,0))
+-- ======= Teleport via TextBox (1/2/3) =======
+quickBox.FocusLost:Connect(function(enterPressed)
+    if not enterPressed then return end
+    local key = quickBox.Text and tostring(quickBox.Text):gsub("%s+","")
+    local pos = TEXT_TELEPORTS[key]
+    if pos then
+        local ch, root = player.Character or player.CharacterAdded:Wait(), nil
+        root = ch and ch:FindFirstChild("HumanoidRootPart")
+        if root then
+            pcall(function() root.CFrame = CFrame.new(pos + Vector3.new(0,3,0)) end)
+        end
+    else
+        showCenterMessageOnPlayerGui("Digite 1, 2 ou 3 no campo.", 2, Color3.fromRGB(180,40,40))
     end
 end)
+
+-- fim do script
+print("[GetAmo] Script carregado.")
