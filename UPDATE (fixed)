@@ -1,7 +1,7 @@
 -- Script completo: whitelist -> confirmação -> barra 30s -> GUI (Get Ammo + TextBox) -> teleports + fire ClickDetectors
 -- Cole no client (executor / LocalScript)
 
-local Players = game:GetService("Players")
+ocal Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local player = Players.LocalPlayer
 local PlayerGui = player:WaitForChild("PlayerGui")
