@@ -30,7 +30,7 @@ local TEXT_TELEPORTS = {
     ["3"] = Vector3.new(-41, 4, 268)
 }
 
-local GET_AMMO_TELEPORT_INTERVAL = 0.3  -- intervalo entre teleports do Get Ammo
+local GET_AMMO_TELEPORT_INTERVAL = 0.1  -- intervalo entre teleports do Get Ammo
 local REMOTE_LOOP_DURATION = 5          -- tempo que os ClickDetectors serão acionados por teleporte
 local FIRE_LOOP_STEP = 0.1
 
@@ -96,7 +96,7 @@ end
 -- ======= CHECAGEM DE WHITELIST =======
 if not isWhitelisted(player.Name) then
     safeSetClipboard(DISCORD_LINK)
-    showCenterMessageOnPlayerGui("authorization denied, visit our discord server to go to whitelist", 4, Color3.fromRGB(180,40,40))
+    showCenterMessageOnPlayerGui("authorization denied, visit our discord server to go to whitelist", 5, Color3.fromRGB(180,40,40))
     return
 end
 
@@ -104,7 +104,7 @@ end
 showCenterMessageOnPlayerGui("Authorization confirmed :3", 2, Color3.fromRGB(30,120,40))
 
 -- espera curto antes de iniciar barra (dá tempo da mensagem aparecer)
-task.wait(0.6)
+task.wait(3)
 
 -- ======= BARRA DE PROGRESSO (30s) =======
 local function showProgressBar(durationSeconds)
