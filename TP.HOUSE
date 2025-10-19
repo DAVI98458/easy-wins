@@ -10,10 +10,10 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Parent = playerGui
 screenGui.ResetOnSpawn = false
 
--- Criando o botão de abrir/fechar menu
+-- Criando o botão de abrir/fechar menu no canto superior esquerdo
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0, 120, 0, 40)
-toggleButton.Position = UDim2.new(0.5, -60, 0.5, -110) -- meio da tela, acima do menu
+toggleButton.Position = UDim2.new(0, 10, 0, 10) -- canto superior esquerdo
 toggleButton.Text = "Open Menu"
 toggleButton.BackgroundColor3 = Color3.fromRGB(50,50,50)
 toggleButton.TextColor3 = Color3.fromRGB(255,255,255)
@@ -21,17 +21,11 @@ toggleButton.Parent = screenGui
 toggleButton.BorderSizePixel = 0
 toggleButton.Font = Enum.Font.SourceSansBold
 toggleButton.TextScaled = true
-toggleButton.AutoButtonColor = true
-toggleButton.Name = "ToggleButton"
-toggleButton.ClipsDescendants = true
-toggleButton.BackgroundTransparency = 0.3
-toggleButton.TextStrokeTransparency = 0.5
-toggleButton.Roundness = UDim.new(0, 10) -- borda arredondada (apenas decorativo)
 
--- Criando o frame do menu
+-- Criando o frame do menu centralizado
 local menuFrame = Instance.new("Frame")
 menuFrame.Size = UDim2.new(0, 200, 0, 150)
-menuFrame.Position = UDim2.new(0.5, -100, 0.5, -75) -- centralizado
+menuFrame.Position = UDim2.new(0.5, -100, -0.5, -75) -- fora da tela inicialmente (topo)
 menuFrame.BackgroundTransparency = 0.3
 menuFrame.BackgroundColor3 = Color3.fromRGB(30,30,30)
 menuFrame.Visible = false
@@ -40,7 +34,7 @@ menuFrame.BorderSizePixel = 0
 menuFrame.Active = true
 menuFrame.Draggable = true
 
--- Bordas arredondadas usando UICorner
+-- Bordas arredondadas
 local menuCorner = Instance.new("UICorner")
 menuCorner.CornerRadius = UDim.new(0, 15)
 menuCorner.Parent = menuFrame
@@ -82,10 +76,18 @@ toggleButton.MouseButton1Click:Connect(function()
     if menuOpen then
         menuFrame.Visible = true
         toggleButton.Text = "Close Menu"
-        TweenService:Create(menuFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(0.5, -100, 0.5, -75)}):Play()
+        TweenService:Create(
+            menuFrame,
+            TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {Position = UDim2.new(0.5, -100, 0.5, -75)} -- posição centralizada
+        ):Play()
     else
         toggleButton.Text = "Open Menu"
-        TweenService:Create(menuFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(0.5, -100, 0.5, -250)}):Play()
+        TweenService:Create(
+            menuFrame,
+            TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+            {Position = UDim2.new(0.5, -100, -0.5, -75)} -- sobe para fora da tela
+        ):Play()
         wait(0.5)
         menuFrame.Visible = false
     end
