@@ -1,5 +1,5 @@
 -- Serviços
-ocal Players = game:GetService("Players")
+local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
@@ -77,7 +77,7 @@ local safeZoneCreated = false
 -- Função especial para o botão Safe Zone
 local function teleportToSafeZone()
 	-- Teleporta o jogador
-	teleportTo(Vector3.new(47, 40, 67))
+	teleportTo(Vector3.new(47, 25, 67))
 
 	-- Cria o chão invisível e sólido apenas uma vez
 	if not safeZoneCreated then
@@ -86,7 +86,7 @@ local function teleportToSafeZone()
 		local floor = Instance.new("Part")
 		floor.Name = "SafeZoneFloor"
 		floor.Size = Vector3.new(100, 2, 100) -- Tamanho do chão
-		floor.Position = Vector3.new(47, 30, 67) -- Posição do chão
+		floor.Position = Vector3.new(47, 20, 67) -- Posição do chão
 		floor.Anchored = true
 		floor.CanCollide = true -- ✅ sólido
 		floor.Transparency = 0.7 -- invisível
