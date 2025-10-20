@@ -71,7 +71,7 @@ end
 createButton("House 1", Vector3.new(102, 4, -245), 10)
 createButton("House 2", Vector3.new(-33, 4, 68), 60)
 createButton("House 3", Vector3.new(-40, 4, 267), 110)
-createButton("Safe Zone", Vector3.new(-227, 27, -311), 160)
+createButton("Safe Zone(do not use)", Vector3.new(-227, 27, -311), 160)
 
 -- Animação abrir/fechar menu
 local menuOpen = false
