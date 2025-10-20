@@ -1,6 +1,7 @@
 -- Serviços
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -27,10 +28,10 @@ local toggleCorner = Instance.new("UICorner")
 toggleCorner.CornerRadius = UDim.new(0, 10)
 toggleCorner.Parent = toggleButton
 
--- Menu principal (centralizado, inicialmente escondido)
+-- Menu principal (centralizado e animado)
 local menuFrame = Instance.new("Frame")
 menuFrame.Size = UDim2.new(0, 200, 0, 200)
-menuFrame.Position = UDim2.new(0.5, -100, -0.5, -100)
+menuFrame.Position = UDim2.new(0.5, -100, -0.5, -100) -- fora da tela inicialmente
 menuFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 menuFrame.BackgroundTransparency = 0.3
 menuFrame.BorderSizePixel = 0
@@ -43,8 +44,8 @@ local menuCorner = Instance.new("UICorner")
 menuCorner.CornerRadius = UDim.new(0, 15)
 menuCorner.Parent = menuFrame
 
--- Função para criar botões no menu
-local function createButton(name, position, yOffset)
+-- Função genérica para criar botões
+local function createButton(name, callback, yOffset)
 	local button = Instance.new("TextButton")
 	button.Size = UDim2.new(0, 180, 0, 40)
 	button.Position = UDim2.new(0, 10, 0, yOffset)
@@ -60,20 +61,46 @@ local function createButton(name, position, yOffset)
 	corner.CornerRadius = UDim.new(0, 10)
 	corner.Parent = button
 
-	button.MouseButton1Click:Connect(function()
-		if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-			player.Character.HumanoidRootPart.CFrame = CFrame.new(position)
-		end
-	end)
+	button.MouseButton1Click:Connect(callback)
+end
+
+-- Função de teleporte simples
+local function teleportTo(pos)
+	if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+		player.Character.HumanoidRootPart.CFrame = CFrame.new(pos)
+	end
+end
+
+-- Controle de criação única da Safe Zone
+local safeZoneCreated = false
+
+-- Função especial para o botão Safe Zone
+local function teleportToSafeZone()
+	-- Teleporta o jogador
+	teleportTo(Vector3.new(47, 40, 67))
+
+	-- Cria o chão invisível e sólido apenas uma vez
+	if not safeZoneCreated then
+		safeZoneCreated = true
+
+		local floor = Instance.new("Part")
+		floor.Name = "SafeZoneFloor"
+		floor.Size = Vector3.new(100, 2, 100) -- Tamanho do chão
+		floor.Position = Vector3.new(47, 30, 67) -- Posição do chão
+		floor.Anchored = true
+		floor.CanCollide = true -- ✅ sólido
+		floor.Transparency = 0.7 -- invisível
+		floor.Parent = Workspace
+	end
 end
 
 -- Criando os botões de teleporte
-createButton("House 1", Vector3.new(102, 4, -245), 10)
-createButton("House 2", Vector3.new(-33, 4, 68), 60)
-createButton("House 3", Vector3.new(-40, 4, 267), 110)
-createButton("Safe Zone(do not use)", Vector3.new(-227, 27, -311), 160)
+createButton("House 1", function() teleportTo(Vector3.new(102, 4, -245)) end, 10)
+createButton("House 2", function() teleportTo(Vector3.new(-33, 4, 68)) end, 60)
+createButton("House 3", function() teleportTo(Vector3.new(-40, 4, 267)) end, 110)
+createButton("Safe Zone", teleportToSafeZone, 160)
 
--- Animação abrir/fechar menu
+-- Sistema de animação abrir/fechar menu
 local menuOpen = false
 
 toggleButton.MouseButton1Click:Connect(function()
