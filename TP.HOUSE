@@ -1,75 +1,61 @@
---// Serviços
+-- Serviços
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
---// GUI PRINCIPAL
-local gui = Instance.new("ScreenGui")
-gui.Name = "TeleportMenu"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.Parent = playerGui
+-- Criando a ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "TeleportMenuGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
 
---// BOTÃO DE ABRIR/FECHAR MENU
-local toggle = Instance.new("TextButton")
-toggle.Name = "ToggleButton"
-toggle.AnchorPoint = Vector2.new(0, 0)
-toggle.Position = UDim2.new(0, 10, 0, 50) -- canto superior esquerdo, ligeiramente abaixo
-toggle.Size = UDim2.new(0, 130, 0, 40)
-toggle.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-toggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggle.Font = Enum.Font.SourceSansBold
-toggle.TextScaled = true
-toggle.BorderSizePixel = 0
-toggle.Text = "Open Menu"
-toggle.Visible = true
-toggle.Parent = gui
+-- Botão de abrir/fechar menu (canto superior esquerdo)
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 120, 0, 40)
+toggleButton.Position = UDim2.new(0, 10, 0, 10)
+toggleButton.Text = "Open Menu"
+toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Font = Enum.Font.SourceSansBold
+toggleButton.TextScaled = true
+toggleButton.BorderSizePixel = 0
+toggleButton.Parent = screenGui
 
 local toggleCorner = Instance.new("UICorner")
 toggleCorner.CornerRadius = UDim.new(0, 10)
-toggleCorner.Parent = toggle
+toggleCorner.Parent = toggleButton
 
---// MENU CENTRAL
-local menu = Instance.new("Frame")
-menu.Size = UDim2.new(0, 220, 0, 220)
-menu.Position = UDim2.new(0.5, -110, 0.5, -110)
-menu.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-menu.BackgroundTransparency = 0.3
-menu.BorderSizePixel = 0
-menu.Visible = false
-menu.Active = true
-menu.Draggable = true
-menu.Parent = gui
+-- Menu principal (centralizado e animado)
+local menuFrame = Instance.new("Frame")
+menuFrame.Size = UDim2.new(0, 200, 0, 200)
+menuFrame.Position = UDim2.new(0.5, -100, -0.5, -100) -- fora da tela inicialmente
+menuFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+menuFrame.BackgroundTransparency = 0.3
+menuFrame.BorderSizePixel = 0
+menuFrame.Visible = false
+menuFrame.Active = true
+menuFrame.Draggable = true
+menuFrame.Parent = screenGui
 
 local menuCorner = Instance.new("UICorner")
 menuCorner.CornerRadius = UDim.new(0, 15)
-menuCorner.Parent = menu
+menuCorner.Parent = menuFrame
 
---// VARIÁVEIS
-local menuOpen = false
-
---// FUNÇÃO DE TELEPORTE
-local function teleportTo(pos)
-	local char = player.Character
-	if char and char:FindFirstChild("HumanoidRootPart") then
-		char.HumanoidRootPart.CFrame = CFrame.new(pos)
-	end
-end
-
---// CRIADOR DE BOTÕES
-local function createButton(text, yOffset, callback)
+-- Função genérica para criar botões
+local function createButton(name, callback, yOffset)
 	local button = Instance.new("TextButton")
-	button.Size = UDim2.new(0, 190, 0, 40)
-	button.Position = UDim2.new(0, 15, 0, yOffset)
-	button.Text = text
+	button.Size = UDim2.new(0, 180, 0, 40)
+	button.Position = UDim2.new(0, 10, 0, yOffset)
+	button.Text = name
 	button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 	button.TextColor3 = Color3.fromRGB(255, 255, 255)
 	button.Font = Enum.Font.SourceSansBold
 	button.TextScaled = true
 	button.BorderSizePixel = 0
-	button.Parent = menu
+	button.Parent = menuFrame
 
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 10)
@@ -78,41 +64,70 @@ local function createButton(text, yOffset, callback)
 	button.MouseButton1Click:Connect(callback)
 end
 
---// BOTÕES DE TELEPORTE
-createButton("House 1", 10, function()
-	teleportTo(Vector3.new(102, 4, -245))
-end)
+-- Função de teleporte simples
+local function teleportTo(pos)
+	if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+		player.Character.HumanoidRootPart.CFrame = CFrame.new(pos)
+	end
+end
 
-createButton("House 2", 60, function()
-	teleportTo(Vector3.new(-33, 4, 68))
-end)
+-- Controle de criação única da Safe Zone
+local safeZoneCreated = false
 
-createButton("House 3", 110, function()
-	teleportTo(Vector3.new(-40, 4, 267))
-end)
+-- Função especial para o botão Safe Zone
+local function teleportToSafeZone()
+	-- Teleporta o jogador
+	teleportTo(Vector3.new(47, 15, 67))
 
---// ANIMAÇÃO DE ABRIR/FECHAR
-toggle.MouseButton1Click:Connect(function()
+	-- Cria o chão invisível e sólido apenas uma vez
+	if not safeZoneCreated then
+		safeZoneCreated = true
+
+		local floor = Instance.new("Part")
+		floor.Name = "SafeZoneFloor"
+		floor.Size = Vector3.new(100, 2, 100) -- Tamanho do chão
+		floor.Position = Vector3.new(47, 10, 67) -- Posição do chão
+		floor.Anchored = true
+		floor.CanCollide = true -- ✅ sólido
+		floor.Transparency = 0.8 -- invisível
+		floor.Parent = Workspace
+	end
+end
+
+-- Criando os botões de teleporte
+createButton("House 1", function() teleportTo(Vector3.new(102, 4, -245)) end, 10)
+createButton("House 2", function() teleportTo(Vector3.new(-33, 4, 68)) end, 60)
+createButton("House 3", function() teleportTo(Vector3.new(-40, 4, 267)) end, 110)
+createButton("Safe Zone(Beta)", teleportToSafeZone, 160)
+
+-- Sistema de animação abrir/fechar menu
+local menuOpen = false
+
+toggleButton.MouseButton1Click:Connect(function()
 	menuOpen = not menuOpen
 
 	if menuOpen then
-		menu.Visible = true
-		toggle.Text = "Close Menu"
+		menuFrame.Visible = true
+		toggleButton.Text = "Close Menu"
+
 		local openTween = TweenService:Create(
-			menu,
-			TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{Position = UDim2.new(0.5, -110, 0.5, -110)}
+			menuFrame,
+			TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{Position = UDim2.new(0.5, -100, 0.5, -100)}
 		)
 		openTween:Play()
+
 	else
-		toggle.Text = "Open Menu"
+		toggleButton.Text = "Open Menu"
+
 		local closeTween = TweenService:Create(
-			menu,
-			TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{Position = UDim2.new(0.5, -110, -0.5, -110)}
+			menuFrame,
+			TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+			{Position = UDim2.new(0.5, -100, -0.5, -100)}
 		)
 		closeTween:Play()
+
 		closeTween.Completed:Wait()
-		menu.Visible = false
+		menuFrame.Visible = false
 	end
 end)
