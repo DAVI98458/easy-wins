@@ -100,7 +100,7 @@ createButton("House 1", function() teleportTo(Vector3.new(102, 4, -245)) end, 10
 createButton("House 2", function() teleportTo(Vector3.new(-33, 4, 68)) end, 60)
 createButton("House 3", function() teleportTo(Vector3.new(-40, 4, 267)) end, 110)
 createButton("Safe Zone (Beta)", teleportToSafeZone, 160)
-createButton("Lodge", teleportTo(Vector3.new(-233, 17, 110)) end, 170)
+createButton("Lodge", function() teleportTo(Vector3.new(-233, 17, 110)) end, 210)
 
 -- Sistema de animação abrir/fechar menu
 local menuOpen = false
