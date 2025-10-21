@@ -2,6 +2,8 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
@@ -13,7 +15,10 @@ screenGui.Name = "TeleportMenuGUI"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
--- Botão de abrir/fechar menu (canto superior esquerdo)
+------------------------------------------------------
+-- BOTÃO PRINCIPAL DO MENU
+------------------------------------------------------
+
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0, 120, 0, 40)
 toggleButton.Position = UDim2.new(0, 10, 0, 20)
@@ -29,10 +34,13 @@ local toggleCorner = Instance.new("UICorner")
 toggleCorner.CornerRadius = UDim.new(0, 10)
 toggleCorner.Parent = toggleButton
 
--- Menu principal (centralizado e animado)
+------------------------------------------------------
+-- MENU PRINCIPAL
+------------------------------------------------------
+
 local menuFrame = Instance.new("Frame")
-menuFrame.Size = UDim2.new(0, 200, 0, 350) -- aumentado para caber o novo botão
-menuFrame.Position = UDim2.new(0.5, -100, -0.5, -175)
+menuFrame.Size = UDim2.new(0, 200, 0, 300)
+menuFrame.Position = UDim2.new(0.5, -100, -0.5, -150) -- fora da tela inicialmente
 menuFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 menuFrame.BackgroundTransparency = 0.3
 menuFrame.BorderSizePixel = 0
@@ -65,17 +73,17 @@ local function createButton(name, callback, yOffset)
 	button.MouseButton1Click:Connect(callback)
 end
 
--- Função de teleporte simples
+------------------------------------------------------
+-- FUNÇÕES DE TELEPORTE
+------------------------------------------------------
+
 local function teleportTo(pos)
 	if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
 		player.Character.HumanoidRootPart.CFrame = CFrame.new(pos)
 	end
 end
 
--- Controle de criação única da Safe Zone
 local safeZoneCreated = false
-
--- Função especial para o botão Safe Zone
 local function teleportToSafeZone()
 	teleportTo(Vector3.new(47, 15, 67))
 
@@ -92,51 +100,92 @@ local function teleportToSafeZone()
 	end
 end
 
--- Criando os botões de teleporte
-createButton("Cabin 1", function() teleportTo(Vector3.new(102, 4, -245)) end, 10)
-createButton("Cabin 2", function() teleportTo(Vector3.new(-33, 4, 68)) end, 60)
-createButton("Cabin 3", function() teleportTo(Vector3.new(-40, 4, 267)) end, 110)
-createButton("Cabin 4", function() teleportTo(Vector3.new(231, 4, 243)) end, 160)
-createButton("Safe Zone (Beta)", teleportToSafeZone, 210)
-createButton("Lodge", function() teleportTo(Vector3.new(-233, 17, 110)) end, 260)
+------------------------------------------------------
+-- BOTÕES DE TELEPORTE
+------------------------------------------------------
 
--- Sistema de animação abrir/fechar menu
+createButton("House 1", function() teleportTo(Vector3.new(102, 4, -245)) end, 10)
+createButton("House 2", function() teleportTo(Vector3.new(-33, 4, 68)) end, 60)
+createButton("House 3", function() teleportTo(Vector3.new(-40, 4, 267)) end, 110)
+createButton("House 4", function() teleportTo(Vector3.new(231, 4, 243)) end, 160)
+createButton("Lodge", function() teleportTo(Vector3.new(-233, 17, 110)) end, 210)
+createButton("Safe Zone (Beta)", teleportToSafeZone, 260)
+
+------------------------------------------------------
+-- ANIMAÇÃO DO MENU
+------------------------------------------------------
+
 local menuOpen = false
-
 local function toggleMenu()
 	menuOpen = not menuOpen
 
 	if menuOpen then
 		menuFrame.Visible = true
 		toggleButton.Text = "Close Menu"
-
-		local openTween = TweenService:Create(
-			menuFrame,
-			TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{Position = UDim2.new(0.5, -100, 0.5, -175)}
-		)
+		local openTween = TweenService:Create(menuFrame, TweenInfo.new(0.4), {Position = UDim2.new(0.5, -100, 0.5, -150)})
 		openTween:Play()
 	else
 		toggleButton.Text = "Open Menu"
-
-		local closeTween = TweenService:Create(
-			menuFrame,
-			TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{Position = UDim2.new(0.5, -100, -0.5, -175)}
-		)
+		local closeTween = TweenService:Create(menuFrame, TweenInfo.new(0.4), {Position = UDim2.new(0.5, -100, -0.5, -150)})
 		closeTween:Play()
 		closeTween.Completed:Wait()
 		menuFrame.Visible = false
 	end
 end
 
--- Clique no botão para abrir/fechar
 toggleButton.MouseButton1Click:Connect(toggleMenu)
 
--- Tecla "G" para abrir/fechar o menu
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
 	if input.KeyCode == Enum.KeyCode.G then
 		toggleMenu()
 	end
 end)
+
+------------------------------------------------------
+-- BOTÃO ARRÁSTAVEL "fb loop"
+------------------------------------------------------
+
+local lightButton = Instance.new("TextButton")
+lightButton.Size = UDim2.new(0, 100, 0, 40)
+lightButton.Position = UDim2.new(0.5, -50, 0.8, 0)
+lightButton.Text = "fb loop"
+lightButton.BackgroundColor3 = Color3.fromRGB(255, 220, 100)
+lightButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+lightButton.Font = Enum.Font.SourceSansBold
+lightButton.TextScaled = true
+lightButton.BorderSizePixel = 0
+lightButton.Active = true
+lightButton.Draggable = true
+lightButton.Parent = screenGui
+
+local lightCorner = Instance.new("UICorner")
+lightCorner.CornerRadius = UDim.new(0, 10)
+lightCorner.Parent = lightButton
+
+-- Loop de iluminação
+local lightingActive = false
+local loopConnection
+
+local function toggleLighting()
+	lightingActive = not lightingActive
+
+	if lightingActive then
+		lightButton.BackgroundColor3 = Color3.fromRGB(255, 255, 180)
+		loopConnection = RunService.RenderStepped:Connect(function()
+			Lighting.Brightness = 5
+			Lighting.ClockTime = 12
+			Lighting.FogEnd = 100000
+			Lighting.Ambient = Color3.new(1, 1, 1)
+			Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+		end)
+	else
+		lightButton.BackgroundColor3 = Color3.fromRGB(255, 220, 100)
+		if loopConnection then
+			loopConnection:Disconnect()
+			loopConnection = nil
+		end
+	end
+end
+
+lightButton.MouseButton1Click:Connect(toggleLighting)
