@@ -1,191 +1,82 @@
--- Serviços
+-- Carrega a biblioteca Rayfield
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+-- Cria janela/interface
+local Window = Rayfield:CreateWindow({
+    Name = "Teleport Menu night 3 cabins",
+    LoadingTitle = "Teleport System",
+    LoadingSubtitle = "Shadown_gd",
+    ConfigurationSaving = {
+        Enabled = true,
+        FileName = "TeleportMenuConfig"
+    }
+})
+
+-- Cria aba
+local TeleportTab = Window:CreateTab("Teleports", 4483362458)
+
+-- Função de teleporte
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local Lighting = game:GetService("Lighting")
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-
--- Criando a ScreenGui
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TeleportMenuGUI"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = playerGui
-
-------------------------------------------------------
--- BOTÃO PRINCIPAL DO MENU
-------------------------------------------------------
-
-local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 120, 0, 40)
-toggleButton.Position = UDim2.new(0, 10, 0, 20)
-toggleButton.Text = "Open Menu"
-toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleButton.Font = Enum.Font.SourceSansBold
-toggleButton.TextScaled = true
-toggleButton.BorderSizePixel = 0
-toggleButton.Parent = screenGui
-
-local toggleCorner = Instance.new("UICorner")
-toggleCorner.CornerRadius = UDim.new(0, 10)
-toggleCorner.Parent = toggleButton
-
-------------------------------------------------------
--- MENU PRINCIPAL
-------------------------------------------------------
-
-local menuFrame = Instance.new("Frame")
-menuFrame.Size = UDim2.new(0, 200, 0, 300)
-menuFrame.Position = UDim2.new(0.5, -100, -0.5, -150) -- fora da tela inicialmente
-menuFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-menuFrame.BackgroundTransparency = 0.3
-menuFrame.BorderSizePixel = 0
-menuFrame.Visible = false
-menuFrame.Active = true
-menuFrame.Draggable = true
-menuFrame.Parent = screenGui
-
-local menuCorner = Instance.new("UICorner")
-menuCorner.CornerRadius = UDim.new(0, 15)
-menuCorner.Parent = menuFrame
-
--- Função genérica para criar botões
-local function createButton(name, callback, yOffset)
-	local button = Instance.new("TextButton")
-	button.Size = UDim2.new(0, 180, 0, 40)
-	button.Position = UDim2.new(0, 10, 0, yOffset)
-	button.Text = name
-	button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-	button.TextColor3 = Color3.fromRGB(255, 255, 255)
-	button.Font = Enum.Font.SourceSansBold
-	button.TextScaled = true
-	button.BorderSizePixel = 0
-	button.Parent = menuFrame
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 10)
-	corner.Parent = button
-
-	button.MouseButton1Click:Connect(callback)
-end
-
-------------------------------------------------------
--- FUNÇÕES DE TELEPORTE
-------------------------------------------------------
 
 local function teleportTo(pos)
-	if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-		player.Character.HumanoidRootPart.CFrame = CFrame.new(pos)
-	end
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        player.Character.HumanoidRootPart.CFrame = CFrame.new(pos)
+    end
 end
 
-local safeZoneCreated = false
-local function teleportToSafeZone()
-	teleportTo(Vector3.new(47, 15, 67))
+-- Adiciona botões com Rayfield para cada teleporte
+TeleportTab:CreateButton({
+    Name = "Cabin 1",
+    Callback = function()
+        teleportTo(Vector3.new(102, 4, -245))
+    end
+})
 
-	if not safeZoneCreated then
-		safeZoneCreated = true
-		local floor = Instance.new("Part")
-		floor.Name = "SafeZoneFloor"
-		floor.Size = Vector3.new(100, 2, 100)
-		floor.Position = Vector3.new(47, 10, 67)
-		floor.Anchored = true
-		floor.CanCollide = true
-		floor.Transparency = 0.8
-		floor.Parent = Workspace
-	end
-end
+TeleportTab:CreateButton({
+    Name = "Cabin 2",
+    Callback = function()
+        teleportTo(Vector3.new(-33, 4, 68))
+    end
+})
 
-------------------------------------------------------
--- BOTÕES DE TELEPORTE
-------------------------------------------------------
+TeleportTab:CreateButton({
+    Name = "Cabin 3",
+    Callback = function()
+        teleportTo(Vector3.new(-40, 4, 267))
+    end
+})
 
-createButton("Cabin 1", function() teleportTo(Vector3.new(102, 4, -245)) end, 10)
-createButton(Cabin 2", function() teleportTo(Vector3.new(-33, 4, 68)) end, 60)
-createButton("Cabin 3", function() teleportTo(Vector3.new(-40, 4, 267)) end, 110)
-createButton("Cabin 4", function() teleportTo(Vector3.new(231, 4, 243)) end, 160)
-createButton("Lodge", function() teleportTo(Vector3.new(-233, 17, 110)) end, 210)
-createButton("Safe Zone (Beta)", teleportToSafeZone, 260)
+TeleportTab:CreateButton({
+    Name = "Cabin 4",
+    Callback = function()
+        teleportTo(Vector3.new(231, 4, 243))
+    end
+})
 
-------------------------------------------------------
--- ANIMAÇÃO DO MENU
-------------------------------------------------------
+TeleportTab:CreateButton({
+    Name = "Lodge",
+    Callback = function()
+        teleportTo(Vector3.new(-233, 17, 110))
+    end
+})
 
-local menuOpen = false
-local function toggleMenu()
-	menuOpen = not menuOpen
-
-	if menuOpen then
-		menuFrame.Visible = true
-		toggleButton.Text = "Close Menu"
-		local openTween = TweenService:Create(menuFrame, TweenInfo.new(0.4), {Position = UDim2.new(0.5, -100, 0.5, -150)})
-		openTween:Play()
-	else
-		toggleButton.Text = "Open Menu"
-		local closeTween = TweenService:Create(menuFrame, TweenInfo.new(0.4), {Position = UDim2.new(0.5, -100, -0.5, -150)})
-		closeTween:Play()
-		closeTween.Completed:Wait()
-		menuFrame.Visible = false
-	end
-end
-
-toggleButton.MouseButton1Click:Connect(toggleMenu)
-
-UserInputService.InputBegan:Connect(function(input, processed)
-	if processed then return end
-	if input.KeyCode == Enum.KeyCode.G then
-		toggleMenu()
-	end
-end)
-
-------------------------------------------------------
--- BOTÃO ARRÁSTAVEL "fb loop"
-------------------------------------------------------
-
-local lightButton = Instance.new("TextButton")
-lightButton.Size = UDim2.new(0, 100, 0, 40)
-lightButton.Position = UDim2.new(0.5, -50, 0.8, 0)
-lightButton.Text = "fb loop"
-lightButton.BackgroundColor3 = Color3.fromRGB(255, 220, 100)
-lightButton.TextColor3 = Color3.fromRGB(0, 0, 0)
-lightButton.Font = Enum.Font.SourceSansBold
-lightButton.TextScaled = true
-lightButton.BorderSizePixel = 0
-lightButton.Active = true
-lightButton.Draggable = true
-lightButton.Parent = screenGui
-
-local lightCorner = Instance.new("UICorner")
-lightCorner.CornerRadius = UDim.new(0, 10)
-lightCorner.Parent = lightButton
-
--- Loop de iluminação
-local lightingActive = false
-local loopConnection
-
-local function toggleLighting()
-	lightingActive = not lightingActive
-
-	if lightingActive then
-		lightButton.BackgroundColor3 = Color3.fromRGB(255, 255, 180)
-		loopConnection = RunService.RenderStepped:Connect(function()
-			Lighting.Brightness = 5
-			Lighting.ClockTime = 12
-			Lighting.FogEnd = 100000
-			Lighting.Ambient = Color3.new(1, 1, 1)
-			Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
-		end)
-	else
-		lightButton.BackgroundColor3 = Color3.fromRGB(255, 220, 100)
-		if loopConnection then
-			loopConnection:Disconnect()
-			loopConnection = nil
-		end
-	end
-end
-
-lightButton.MouseButton1Click:Connect(toggleLighting)
+TeleportTab:CreateButton({
+    Name = "Safe Zone (Beta)",
+    Callback = function()
+        teleportTo(Vector3.new(47, 15, 67))
+        -- Criação do chão invisível sólido
+        local Workspace = game:GetService("Workspace")
+        local existing = Workspace:FindFirstChild("SafeZoneFloor")
+        if not existing then
+            local floor = Instance.new("Part")
+            floor.Name = "SafeZoneFloor"
+            floor.Size = Vector3.new(100, 2, 100)
+            floor.Position = Vector3.new(47, 10, 67)
+            floor.Anchored = true
+            floor.CanCollide = true
+            floor.Transparency = 0.8
+            floor.Parent = Workspace
+        end
+    end
+})
