@@ -104,10 +104,10 @@ end
 -- BOTÕES DE TELEPORTE
 ------------------------------------------------------
 
-createButton("House 1", function() teleportTo(Vector3.new(102, 4, -245)) end, 10)
-createButton("House 2", function() teleportTo(Vector3.new(-33, 4, 68)) end, 60)
-createButton("House 3", function() teleportTo(Vector3.new(-40, 4, 267)) end, 110)
-createButton("House 4", function() teleportTo(Vector3.new(231, 4, 243)) end, 160)
+createButton("Cabin 1", function() teleportTo(Vector3.new(102, 4, -245)) end, 10)
+createButton(Cabin 2", function() teleportTo(Vector3.new(-33, 4, 68)) end, 60)
+createButton("Cabin 3", function() teleportTo(Vector3.new(-40, 4, 267)) end, 110)
+createButton("Cabin 4", function() teleportTo(Vector3.new(231, 4, 243)) end, 160)
 createButton("Lodge", function() teleportTo(Vector3.new(-233, 17, 110)) end, 210)
 createButton("Safe Zone (Beta)", teleportToSafeZone, 260)
 
