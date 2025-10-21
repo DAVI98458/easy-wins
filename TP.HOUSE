@@ -16,7 +16,7 @@ screenGui.Parent = playerGui
 -- Botão de abrir/fechar menu (canto superior esquerdo)
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0, 120, 0, 40)
-toggleButton.Position = UDim2.new(0, 10, 0, 20) -- um pouco abaixo do topo
+toggleButton.Position = UDim2.new(0, 10, 0, 20)
 toggleButton.Text = "Open Menu"
 toggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -31,8 +31,8 @@ toggleCorner.Parent = toggleButton
 
 -- Menu principal (centralizado e animado)
 local menuFrame = Instance.new("Frame")
-menuFrame.Size = UDim2.new(0, 200, 0, 250)
-menuFrame.Position = UDim2.new(0.5, -100, -0.5, -125) -- fora da tela inicialmente
+menuFrame.Size = UDim2.new(0, 200, 0, 350) -- aumentado para caber o novo botão
+menuFrame.Position = UDim2.new(0.5, -100, -0.5, -175)
 menuFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 menuFrame.BackgroundTransparency = 0.3
 menuFrame.BorderSizePixel = 0
@@ -77,30 +77,28 @@ local safeZoneCreated = false
 
 -- Função especial para o botão Safe Zone
 local function teleportToSafeZone()
-	-- Teleporta o jogador
 	teleportTo(Vector3.new(47, 15, 67))
 
-	-- Cria o chão invisível e sólido apenas uma vez
 	if not safeZoneCreated then
 		safeZoneCreated = true
-
 		local floor = Instance.new("Part")
 		floor.Name = "SafeZoneFloor"
 		floor.Size = Vector3.new(100, 2, 100)
 		floor.Position = Vector3.new(47, 10, 67)
 		floor.Anchored = true
 		floor.CanCollide = true
-		floor.Transparency = 0.8 -- invisível, mas sólido
+		floor.Transparency = 0.8
 		floor.Parent = Workspace
 	end
 end
 
 -- Criando os botões de teleporte
-createButton("House 1", function() teleportTo(Vector3.new(102, 4, -245)) end, 10)
-createButton("House 2", function() teleportTo(Vector3.new(-33, 4, 68)) end, 60)
-createButton("House 3", function() teleportTo(Vector3.new(-40, 4, 267)) end, 110)
-createButton("Safe Zone (Beta)", teleportToSafeZone, 160)
-createButton("Lodge", function() teleportTo(Vector3.new(-233, 17, 110)) end, 210)
+createButton("Cabin 1", function() teleportTo(Vector3.new(102, 4, -245)) end, 10)
+createButton("Cabin 2", function() teleportTo(Vector3.new(-33, 4, 68)) end, 60)
+createButton("Cabin 3", function() teleportTo(Vector3.new(-40, 4, 267)) end, 110)
+createButton("Cabin 4", function() teleportTo(Vector3.new(231, 4, 243)) end, 160)
+createButton("Safe Zone (Beta)", teleportToSafeZone, 210)
+createButton("Lodge", function() teleportTo(Vector3.new(-233, 17, 110)) end, 260)
 
 -- Sistema de animação abrir/fechar menu
 local menuOpen = false
@@ -115,7 +113,7 @@ local function toggleMenu()
 		local openTween = TweenService:Create(
 			menuFrame,
 			TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{Position = UDim2.new(0.5, -100, 0.5, -125)}
+			{Position = UDim2.new(0.5, -100, 0.5, -175)}
 		)
 		openTween:Play()
 	else
@@ -124,7 +122,7 @@ local function toggleMenu()
 		local closeTween = TweenService:Create(
 			menuFrame,
 			TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-			{Position = UDim2.new(0.5, -100, -0.5, -125)}
+			{Position = UDim2.new(0.5, -100, -0.5, -175)}
 		)
 		closeTween:Play()
 		closeTween.Completed:Wait()
