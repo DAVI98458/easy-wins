@@ -77,7 +77,7 @@ if not authorized then
     showCenterMessage("Unauthorized. Discord link copied.",5)
     return
 else
-    showCenterMessage("Authorization confirmed!",3)
+    showCenterMessage("Authorization confirmed :3 =]",3)
 end
 
 -- ===== Espera personagem pronto =====
