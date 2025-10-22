@@ -1,4 +1,4 @@
--- Carrega a biblioteca Rayfield
+-- Carrega a biblioteca Rayfield.
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 -- Cria janela/interface
