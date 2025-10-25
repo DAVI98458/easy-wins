@@ -1,0 +1,145 @@
+-- Serviços
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart") or player.CharacterAdded:Wait():WaitForChild("HumanoidRootPart")
+player.CharacterAdded:Connect(function(char)
+    hrp = char:WaitForChild("HumanoidRootPart")
+end)
+
+-- Rayfield
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Window = Rayfield:CreateWindow({
+    Name = "[BETA] Teleports",
+})
+
+---------------------------
+-- ABA ESP (Highlight Mutant)
+---------------------------
+local ESPTab = Window:CreateTab("ESP", 4483362458)
+local highlightEnabled = false
+local highlightInstance
+
+local function createHighlight()
+    if highlightInstance then return end
+    local target = workspace:FindFirstChild("BunkerRat")
+    if target then
+        highlightInstance = Instance.new("Highlight")
+        highlightInstance.FillColor = Color3.fromRGB(255,0,0)
+        highlightInstance.OutlineColor = Color3.fromRGB(255,0,0)
+        highlightInstance.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlightInstance.Parent = target
+    end
+end
+
+local function removeHighlight()
+    if highlightInstance then
+        highlightInstance:Destroy()
+        highlightInstance = nil
+    end
+end
+
+ESPTab:CreateToggle({
+    Name = "Highlight Mutant",
+    CurrentValue = false,
+    Flag = "HighlightMutantToggle",
+    Callback = function(value)
+        highlightEnabled = value
+        if value then
+            createHighlight()
+        else
+            removeHighlight()
+        end
+    end,
+})
+
+---------------------------
+-- ABA JerryCans Teleports
+---------------------------
+local GasTab = Window:CreateTab("JerryCans Teleports", 4483362458)
+
+-- Função para teleportar temporariamente e acionar ClickDetectors
+local function teleportAndClick(target)
+    if not target then return end
+
+    -- Determina CFrame seguro
+    local targetCFrame
+    if target:IsA("BasePart") then
+        targetCFrame = target.CFrame
+    elseif target:IsA("Model") then
+        targetCFrame = target.PrimaryPart and target.PrimaryPart.CFrame or target:FindFirstChildWhichIsA("BasePart") and target:FindFirstChildWhichIsA("BasePart").CFrame
+    end
+    if not targetCFrame then return end
+
+    local originalCFrame = hrp.CFrame
+
+    -- Teleporta para JerryCan
+    hrp.CFrame = targetCFrame + Vector3.new(0,2,0)
+
+    -- Aguarda 1 segundo
+    task.wait(0.5)
+
+    -- Aciona todos ClickDetectors descendentes
+    for _, detector in ipairs(target:GetDescendants()) do
+        if detector:IsA("ClickDetector") then
+            pcall(function() fireclickdetector(detector) end)
+        end
+    end
+
+    -- Aguarda mais 1 segundo
+    task.wait(0.1)
+
+    -- Retorna à posição original
+    hrp.CFrame = originalCFrame
+end
+
+-- Função para pegar JerryCan seguro
+local function getJerryCan(n)
+    local jc = workspace:FindFirstChild("JerryCans")
+    if not jc then return nil end
+    return jc:GetChildren()[n]
+end
+
+-- Botões Gas 1–5
+GasTab:CreateButton({
+    Name = "Gas 1",
+    Callback = function() teleportAndClick(getJerryCan(1)) end
+})
+GasTab:CreateButton({
+    Name = "Gas 2",
+    Callback = function() teleportAndClick(getJerryCan(2)) end
+})
+GasTab:CreateButton({
+    Name = "Gas 3",
+    Callback = function() teleportAndClick(getJerryCan(3)) end
+})
+GasTab:CreateButton({
+    Name = "Gas 4",
+    Callback = function() teleportAndClick(getJerryCan(4)) end
+})
+GasTab:CreateButton({
+    Name = "Gas 5",
+    Callback = function() teleportAndClick(getJerryCan(5)) end
+})
+
+-- Outros teleportes fixos
+GasTab:CreateButton({
+    Name = "TP to Fix the Ventilation",
+    Callback = function() hrp.CFrame = CFrame.new(67,17,72) end
+})
+GasTab:CreateButton({
+    Name = "TP Generator",
+    Callback = function() hrp.CFrame = CFrame.new(-29,13,-155) end
+})
+GasTab:CreateButton({
+    Name = "TP Wires 1",
+    Callback = function() hrp.CFrame = CFrame.new(47,24,-131) end
+})
+GasTab:CreateButton({
+    Name = "TP Wires 2",
+    Callback = function() hrp.CFrame = CFrame.new(16,20,-7) end
+})
+GasTab:CreateButton({
+    Name = "TP Wires 3",
+    Callback = function() hrp.CFrame = CFrame.new(-44,20,2) end
+})
