@@ -17,8 +17,8 @@ local Window = Rayfield:CreateWindow({
 -- ABA ESP (Highlight Mutant)
 ---------------------------
 local ESPTab = Window:CreateTab("ESP", 4483362458)
-local highlightEnabled = false
 local highlightInstance
+local highlightEnabled = false
 
 local function createHighlight()
     if highlightInstance then return end
@@ -27,7 +27,8 @@ local function createHighlight()
         highlightInstance = Instance.new("Highlight")
         highlightInstance.FillColor = Color3.fromRGB(255,0,0)
         highlightInstance.OutlineColor = Color3.fromRGB(255,0,0)
-        highlightInstance.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlightInstance.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- mostra mesmo atrás de paredes
+        highlightInstance.Adornee = target
         highlightInstance.Parent = target
     end
 end
@@ -50,96 +51,74 @@ ESPTab:CreateToggle({
         else
             removeHighlight()
         end
-    end,
+    end
 })
+
+-- Loop que garante que o Highlight seja criado assim que o BunkerRat aparecer
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if highlightEnabled and not highlightInstance then
+            createHighlight()
+        end
+    end
+end)
 
 ---------------------------
 -- ABA JerryCans Teleports
 ---------------------------
 local GasTab = Window:CreateTab("JerryCans Teleports", 4483362458)
 
--- Função para teleportar temporariamente e acionar ClickDetectors
-local function teleportAndClick(target)
-    if not target then return end
+-- Função para pegar JerryCan seguro
+local function getJerryCan(n)
+    local jcFolder = workspace:FindFirstChild("JerryCans")
+    if not jcFolder then return nil end
+    return jcFolder:GetChildren()[n]
+end
 
-    -- Determina CFrame seguro
-    local targetCFrame
-    if target:IsA("BasePart") then
-        targetCFrame = target.CFrame
-    elseif target:IsA("Model") then
-        targetCFrame = target.PrimaryPart and target.PrimaryPart.CFrame or target:FindFirstChildWhichIsA("BasePart") and target:FindFirstChildWhichIsA("BasePart").CFrame
-    end
-    if not targetCFrame then return end
-
+-- Função Gas 1–5 (teleporta para JerryCan e aciona ClickDetectors)
+local function teleportAndClick(jerryCan)
+    if not jerryCan then return end
     local originalCFrame = hrp.CFrame
 
-    -- Teleporta para JerryCan
+    local targetCFrame = jerryCan.PrimaryPart and jerryCan.PrimaryPart.CFrame or jerryCan:FindFirstChildWhichIsA("BasePart").CFrame
     hrp.CFrame = targetCFrame + Vector3.new(0,2,0)
+    task.wait(0.2)
 
-    -- Aguarda 1 segundo
-    task.wait(0.5)
-
-    -- Aciona todos ClickDetectors descendentes
-    for _, detector in ipairs(target:GetDescendants()) do
-        if detector:IsA("ClickDetector") then
-            pcall(function() fireclickdetector(detector) end)
+    for _, d in ipairs(jerryCan:GetDescendants()) do
+        if d:IsA("ClickDetector") then
+            pcall(function() fireclickdetector(d) end)
         end
     end
 
-    -- Aguarda mais 1 segundo
-    task.wait(0.1)
-
-    -- Retorna à posição original
     hrp.CFrame = originalCFrame
 end
 
--- Função para pegar JerryCan seguro
-local function getJerryCan(n)
-    local jc = workspace:FindFirstChild("JerryCans")
-    if not jc then return nil end
-    return jc:GetChildren()[n]
+-- Botões Gas 1–5
+for i = 1,5 do
+    GasTab:CreateButton({
+        Name = "Gas "..i,
+        Callback = function()
+            teleportAndClick(getJerryCan(i))
+        end
+    })
 end
 
--- Botões Gas 1–5
-GasTab:CreateButton({
-    Name = "Gas 1",
-    Callback = function() teleportAndClick(getJerryCan(1)) end
-})
-GasTab:CreateButton({
-    Name = "Gas 2",
-    Callback = function() teleportAndClick(getJerryCan(2)) end
-})
-GasTab:CreateButton({
-    Name = "Gas 3",
-    Callback = function() teleportAndClick(getJerryCan(3)) end
-})
-GasTab:CreateButton({
-    Name = "Gas 4",
-    Callback = function() teleportAndClick(getJerryCan(4)) end
-})
-GasTab:CreateButton({
-    Name = "Gas 5",
-    Callback = function() teleportAndClick(getJerryCan(5)) end
-})
+-- Teleportes fixos organizados
+local fixedTeleports = {
+    {Name = "TP to Fix the Ventilation", Position = Vector3.new(67,17,72)},
+    {Name = "TP Generator", Position = Vector3.new(-29,13,-155)},
+    {Name = "TP Wires 1", Position = Vector3.new(47,24,-131)},
+    {Name = "TP Wires 2", Position = Vector3.new(16,20,-7)},
+    {Name = "TP Wires 3", Position = Vector3.new(-44,20,2)},
+    {Name = "TP Wires 4", Position = Vector3.new(-80,20,-135)},
+}
 
--- Outros teleportes fixos
-GasTab:CreateButton({
-    Name = "TP to Fix the Ventilation",
-    Callback = function() hrp.CFrame = CFrame.new(67,17,72) end
-})
-GasTab:CreateButton({
-    Name = "TP Generator",
-    Callback = function() hrp.CFrame = CFrame.new(-29,13,-155) end
-})
-GasTab:CreateButton({
-    Name = "TP Wires 1",
-    Callback = function() hrp.CFrame = CFrame.new(47,24,-131) end
-})
-GasTab:CreateButton({
-    Name = "TP Wires 2",
-    Callback = function() hrp.CFrame = CFrame.new(16,20,-7) end
-})
-GasTab:CreateButton({
-    Name = "TP Wires 3",
-    Callback = function() hrp.CFrame = CFrame.new(-44,20,2) end
-})
+for _, tp in ipairs(fixedTeleports) do
+    GasTab:CreateButton({
+        Name = tp.Name,
+        Callback = function()
+            hrp.CFrame = CFrame.new(tp.Position)
+        end
+    })
+end
