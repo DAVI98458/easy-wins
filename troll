@@ -1,0 +1,66 @@
+-- Script para Roblox
+local Players = game:GetService("Players")
+local TextService = game:GetService("TextService")
+local TweenService = game:GetService("TweenService")
+
+-- Configurações do jogador local
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Cria a interface gráfica
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = playerGui
+screenGui.Name = "NotificationGui"
+
+-- Cria o quadro para a mensagem
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 300, 0, 50)
+frame.Position = UDim2.new(0.5, -150, 0.5, -25) -- Centralizado na tela
+frame.BackgroundTransparency = 0.5
+frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+frame.BorderSizePixel = 0
+frame.Parent = screenGui
+
+-- Cria o texto
+local textLabel = Instance.new("TextLabel")
+textLabel.Size = UDim2.new(1, 0, 1, 0)
+textLabel.Position = UDim2.new(0, 0, 0, 0)
+textLabel.Text = "Discord link copied"
+textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+textLabel.Font = Enum.Font.SourceSans
+textLabel.TextSize = 24
+textLabel.BackgroundTransparency = 1
+textLabel.TextTransparency = 1 -- Começa invisível
+textLabel.Parent = frame
+
+-- Função para animação
+local function animateMessage()
+    -- Fade-in
+    local fadeIn = TweenService:Create(textLabel, TweenInfo.new(0.5), {TextTransparency = 0})
+    local fadeInFrame = TweenService:Create(frame, TweenInfo.new(0.5), {BackgroundTransparency = 0.2})
+    
+    fadeIn:Play()
+    fadeInFrame:Play()
+    
+    -- Espera 3 segundos
+    wait(3)
+    
+    -- Fade-out
+    local fadeOut = TweenService:Create(textLabel, TweenInfo.new(0.5), {TextTransparency = 1})
+    local fadeOutFrame = TweenService:Create(frame, TweenInfo.new(0.5), {BackgroundTransparency = 1})
+    
+    fadeOut:Play()
+    fadeOutFrame:Play()
+    
+    -- Espera o fade-out terminar
+    fadeOut.Completed:Wait()
+    
+    -- Copia o link para a área de transferência
+    TextService:CopyToClipboard("https://discord.gg/X2k52XZwjX")
+    
+    -- Remove a interface gráfica
+    screenGui:Destroy()
+end
+
+-- Inicia a animação
+animateMessage()
