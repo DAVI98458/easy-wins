@@ -21,7 +21,7 @@ local teleportPositions = {
 
 local REMOTE_LOOP_DURATION = 5
 local TELEPORT_INTERVAL = 0.1
-local FIRE_LOOP_STEP = 0.1
+local FIRE_LOOP_STEP = 0.0
 
 -- ===== Funções de GUI =====
 local function showCenterMessage(text,duration)
