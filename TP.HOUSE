@@ -62,7 +62,7 @@ TeleportTab:CreateButton({
 })
 
 TeleportTab:CreateButton({
-    Name = "Safe Zone (Beta)",
+    Name = "Safe Zone(fully working)",
     Callback = function()
         teleportTo(Vector3.new(47, 13, 67))
         -- Criação do chão invisível sólido
@@ -71,7 +71,7 @@ TeleportTab:CreateButton({
         if not existing then
             local floor = Instance.new("Part")
             floor.Name = "SafeZoneFloor"
-            floor.Size = Vector3.new(100, 2, 100)
+            floor.Size = Vector3.new(100, 1, 100)
             floor.Position = Vector3.new(47, 7, 67)
             floor.Anchored = true
             floor.CanCollide = true
