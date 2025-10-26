@@ -1,0 +1,125 @@
+-- Serviços
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart") or player.CharacterAdded:Wait():WaitForChild("HumanoidRootPart")
+player.CharacterAdded:Connect(function(char)
+    hrp = char:WaitForChild("HumanoidRootPart")
+end)
+
+-- Rayfield
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+local Window = Rayfield:CreateWindow({
+    Name = "[Semi BETA] Teleports",
+})
+
+---------------------------
+-- ABA ESP (Highlight Mutant)
+---------------------------
+local ESPTab = Window:CreateTab("ESP", 4483362458)
+local highlightInstance
+local highlightEnabled = false
+
+local function createHighlight()
+    if highlightInstance then return end
+    local target = workspace:FindFirstChild("BunkerRat")
+    if target then
+        highlightInstance = Instance.new("Highlight")
+        highlightInstance.FillColor = Color3.fromRGB(255,0,0)
+        highlightInstance.OutlineColor = Color3.fromRGB(255,0,0)
+        highlightInstance.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- mostra mesmo atrás de paredes
+        highlightInstance.Adornee = target
+        highlightInstance.Parent = target
+    end
+end
+
+local function removeHighlight()
+    if highlightInstance then
+        highlightInstance:Destroy()
+        highlightInstance = nil
+    end
+end
+
+ESPTab:CreateToggle({
+    Name = "Highlight Mutant",
+    CurrentValue = false,
+    Flag = "HighlightMutantToggle",
+    Callback = function(value)
+        highlightEnabled = value
+        if value then
+            createHighlight()
+        else
+            removeHighlight()
+        end
+    end
+})
+
+-- Loop que garante que o Highlight seja criado assim que o BunkerRat aparecer
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if highlightEnabled and not highlightInstance then
+            createHighlight()
+        end
+    end
+end)
+
+---------------------------
+-- ABA JerryCans Teleports
+---------------------------
+local GasTab = Window:CreateTab("JerryCans Teleports", 4483362458)
+
+-- Função para pegar JerryCan seguro
+local function getJerryCan(n)
+    local jcFolder = workspace:FindFirstChild("JerryCans")
+    if not jcFolder then return nil end
+    return jcFolder:GetChildren()[n]
+end
+
+-- Função Gas 1–5 (teleporta para JerryCan e aciona ClickDetectors)
+local function teleportAndClick(jerryCan)
+    if not jerryCan then return end
+    local originalCFrame = hrp.CFrame
+
+    local targetCFrame = jerryCan.PrimaryPart and jerryCan.PrimaryPart.CFrame or jerryCan:FindFirstChildWhichIsA("BasePart").CFrame
+    hrp.CFrame = targetCFrame + Vector3.new(0,2,0)
+    task.wait(0.2)
+
+    for _, d in ipairs(jerryCan:GetDescendants()) do
+        if d:IsA("ClickDetector") then
+            pcall(function() fireclickdetector(d) end)
+        end
+    end
+
+    hrp.CFrame = originalCFrame
+end
+
+-- Botões Gas 1–5
+for i = 1,5 do
+    GasTab:CreateButton({
+        Name = "Gas "..i,
+        Callback = function()
+            teleportAndClick(getJerryCan(i))
+        end
+    })
+end
+
+-- Teleportes fixos organizados
+local fixedTeleports = {
+    {Name = "TP to Fix the Ventilation", Position = Vector3.new(67,17,72)},
+    {Name = "TP Generator", Position = Vector3.new(-29,13,-155)},
+    {Name = "TP Wires 1", Position = Vector3.new(47,24,-131)},
+    {Name = "TP Wires 2", Position = Vector3.new(16,20,-7)},
+    {Name = "TP Wires 3", Position = Vector3.new(-44,20,2)},
+    {Name = "TP Wires 4", Position = Vector3.new(-80,20,-135)},
+    {Name = "TP for the radio", Position = Vector3.new(17, 17, 71)},
+}
+
+for _, tp in ipairs(fixedTeleports) do
+    GasTab:CreateButton({
+        Name = tp.Name,
+        Callback = function()
+            hrp.CFrame = CFrame.new(tp.Position)
+        end
+    })
+end
