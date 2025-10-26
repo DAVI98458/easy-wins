@@ -1,0 +1,82 @@
+-- Carrega a biblioteca Rayfield
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+-- Cria janela/interface
+local Window = Rayfield:CreateWindow({
+    Name = "Teleport Menu night 3 cabins",
+    LoadingTitle = "Teleport System",
+    LoadingSubtitle = "Shadown_gd",
+    ConfigurationSaving = {
+        Enabled = true,
+        FileName = "TeleportMenuConfig"
+    }
+})
+
+-- Cria aba
+local TeleportTab = Window:CreateTab("Teleports", 4483362458)
+
+-- Função de teleporte
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local function teleportTo(pos)
+    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        player.Character.HumanoidRootPart.CFrame = CFrame.new(pos)
+    end
+end
+
+-- Adiciona botões com Rayfield para cada teleporte
+TeleportTab:CreateButton({
+    Name = "Cabin 1",
+    Callback = function()
+        teleportTo(Vector3.new(102, 4, -245))
+    end
+})
+
+TeleportTab:CreateButton({
+    Name = "Cabin 2",
+    Callback = function()
+        teleportTo(Vector3.new(-33, 4, 68))
+    end
+})
+
+TeleportTab:CreateButton({
+    Name = "Cabin 3",
+    Callback = function()
+        teleportTo(Vector3.new(-40, 4, 267))
+    end
+})
+
+TeleportTab:CreateButton({
+    Name = "Cabin 4",
+    Callback = function()
+        teleportTo(Vector3.new(231, 4, 243))
+    end
+})
+
+TeleportTab:CreateButton({
+    Name = "Lodge",
+    Callback = function()
+        teleportTo(Vector3.new(-233, 17, 110))
+    end
+})
+
+TeleportTab:CreateButton({
+    Name = "Safe Zone(fully working)",
+    Callback = function()
+        teleportTo(Vector3.new(47, 13, 67))
+        -- Criação do chão invisível sólido
+        local Workspace = game:GetService("Workspace")
+        local existing = Workspace:FindFirstChild("SafeZoneFloor")
+        if not existing then
+            local floor = Instance.new("Part")
+            floor.Name = "SafeZoneFloor"
+            floor.Size = Vector3.new(100, 1, 100)
+            floor.Position = Vector3.new(47, 7, 67)
+            floor.Anchored = true
+            floor.CanCollide = true
+            floor.Transparency = 0.8
+            floor.Parent = Workspace
+        end
+    end
+})
